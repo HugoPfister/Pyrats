@@ -9,21 +9,23 @@ import numpy as np
 import yt
 
 
-
 # Classes stuff
 class ImplementError(Exception):
     """Custom class for 'not implemented yet' errors"""
     # TODO: replace with NotImplementedError
+
     def __init__(self):
         Exception.__init__(self, 'Not implemented yet')
 
 # Useful functions
+
+
 def read_header(ds):
     """Read a RAMSES output header file."""
     import re
-    
-    folder='./'
-    iout=int(str(ds)[-5:])
+
+    folder = './'
+    iout = int(str(ds)[-5:])
 
     hname = '{0}/output_{1:05d}/header_{1:05d}.txt'.format(folder, iout)
     with open(hname, 'r') as hfile:
@@ -50,16 +52,15 @@ def read_header(ds):
             fields = fields.replace('iord', 'id')
         header['fields'] = fields.split()
 
-
-    
     return header
+
 
 def read_cooling(ds):
     """Read the cooling table from the cooling.out file."""
     import fortranfile as ff
-    
-    folder='.'
-    iout=int(str(ds)[-5:])
+
+    folder = '.'
+    iout = int(str(ds)[-5:])
 
     fname = '{F}/output_{I:05d}/cooling_{I:05d}.out'.format(F=folder,
                                                             I=iout)
@@ -77,8 +78,10 @@ def read_cooling(ds):
         cool['metal'] = cf.readReals('d').reshape((n1, n2), order='F')
         cool['cooling_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
         cool['heating_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['cooling_com_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['heating_com_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
+        cool['cooling_com_prime'] = cf.readReals(
+            'd').reshape((n1, n2), order='F')
+        cool['heating_com_prime'] = cf.readReals(
+            'd').reshape((n1, n2), order='F')
         cool['metal_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
         cool['mu'] = cf.readReals('d').reshape((n1, n2), order='F')
         cool['spec'] = cf.readReals('d').reshape((n1, n2, 6), order='F')
