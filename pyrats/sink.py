@@ -3,25 +3,17 @@
 """Module to deal with sinks 
 """
 import matplotlib
-matplotlib.use('PDF')
+# matplotlib.use('PDF')
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
-import fortranfile as ff
-from time import sleep
 from tqdm import tqdm
-import numpy as np
 import yt
 import glob as glob
 import os as os
-
-import halos
-import utils
-import physics
-
-
-class sinks(object):
+from yt.utilities.lib.cosmology_time import get_ramses_ages
+class Sinks(object):
     """
     Read the sinks outputs from RAMSES and put them in a PandaFrame
     """
@@ -49,15 +41,17 @@ class sinks(object):
 
         return
 
-    def plot_sink_accretion(self, bhid=0, loc='./', limM=None, limrho=None, limv=None, limdM=None):
+    def plot_sink_accretion(self, bhid=0, loc='./', limM=None,
+                            limrho=None, limv=None, limdM=None):
         """
-        Put sink Mass, sound speed, relative velocity, bondi, Eddington, simulation accretion as a function of time in a PDF
+        Put sink Mass, sound speed, relative velocity, bondi,
+        Eddington, simulation accretion as a function of time in a PDF
         Parameters
         ----------
-        bhid (0): 0 for all sinks
-                  [i,j...] for BH #i #j #...
-        loc ('./'): Where to save those PDFs
-        limM rho v dM (None): boundy for the plots e.g. [1e-1, 1e3]
+        * bhid (0): 0 for all sinks
+                    [i,j...] for BH #i #j #...
+        * loc ('./'): Where to save those PDFs
+        * limM rho v dM (None): boundy for the plots e.g. [1e-1, 1e3]
         """
         plt.rcParams.update({'font.size': 7})
         # plt.rcParams.update({'lines.linewidth':2})
@@ -80,14 +74,14 @@ class sinks(object):
                 plt.plot(sink.t, sink.M)
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('M$_\\bullet$ [M$_\\odot$]')
-            if limM != None:
+            if limM is not None:
                 plt.ylim(limM[0], limM[1])
 
             plt.subplot(222)
             plt.semilogy(sink.t, sink.rho)
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('$\\rho$ [part cc$^{-1}$]')
-            if limrho != None:
+            if limrho is not None:
                 plt.ylim(limrho[0], limrho[1])
 
             plt.subplot(223)
@@ -96,7 +90,7 @@ class sinks(object):
             plt.legend(loc='lower left')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('c$_s$ & $\Delta$v [km s$^{-1}$]')
-            if limv != None:
+            if limv is not None:
                 plt.ylim(limv[0], limv[1])
 
             plt.subplot(224)
@@ -106,7 +100,7 @@ class sinks(object):
             plt.legend(loc='lower right')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('dM/dt [M$_\\odot$ yr$^{-1}$]')
-            if limdM != None:
+            if limdM is not None:
                 plt.ylim(limdM[0], limdM[1])
 
             plt.suptitle('BH #{:03}'.format(i + 1))
@@ -119,13 +113,20 @@ class sinks(object):
 def get_sinks(ds):
     columns_name = ['ID', 'M', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'age', 'Mdot']
     sink = pd.read_csv(
-        'output' + str(ds)[-6:] + '/sink' + str(ds)[-6:] + '.csv', names=columns_name)
+        'output' + str(ds)[-6:] + '/sink' + str(ds)[-6:] + '.csv',
+        names=columns_name)
     if len(sink.ID) > 0:
         sink['M'] = sink.M * (ds.arr(1, 'code_mass').in_units('Msun'))
         sink['Mdot'] = sink.M * \
             (ds.arr(1, 'code_mass/code_time').in_units('Msun/yr'))
-        sink.age = np.copy(ds.arr(yt.utilities.lib.cosmology_time.get_ramses_ages(ds.t_frw, ds.tau_frw, ds.dtau, ds.time_simu, 1. / (ds.hubble_constant *
-                                                                                                                                     100 * 1e5 / 3.08e24) / ds['unit_t'], ds['time'] - np.copy(sink.age), ds.n_frw / 2, len(sink.age)), 'code_time').in_units('Myr'))
+        sink.age = np.copy(
+            ds.arr(get_ramses_ages(
+                ds.t_frw, ds.tau_frw, ds.dtau,
+                ds.time_simu,
+                1. / (ds.hubble_constant * 100 * 1e5 / 3.08e24)
+                / ds['unit_t'],
+                ds['time'] - np.copy(sink.age),
+                ds.n_frw / 2, len(sink.age)), 'code_time').in_units('Myr'))
         sink.vx = sink.vx * (ds.arr(1, 'code_velocity').in_units('km / s'))
         sink.vy = sink.vy * (ds.arr(1, 'code_velocity').in_units('km / s'))
         sink.vz = sink.vz * (ds.arr(1, 'code_velocity').in_units('km / s'))

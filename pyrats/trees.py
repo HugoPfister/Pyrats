@@ -15,11 +15,12 @@ TODO:
 """
 import matplotlib
 matplotlib.use('PDF')
+from matplotlib import cm
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
-import fortranfile as ff
+from scipy.io import FortranFile as FF
 from time import sleep
 from tqdm import tqdm
 import numpy as np
@@ -27,9 +28,7 @@ import yt
 import glob as glob
 import os as os
 
-import physics
-import halos
-import utils
+from . import physics, halos, utils
 
 
 class Forest(object):
@@ -109,16 +108,18 @@ class Forest(object):
     def get_all_progenitors(self, hid, timestep=None):
         """Return the reduced tree containing ONLY the progenitors of halo hid
         ==========
-        hid: ID of the halo in the tree: halo_ID, which usually different than the ID from the HaloFinder given by halo_num
-        timestep (None): return the progenitor at a certain timestep only
+        * hid: ID of the halo in the tree: halo_ID, which usually
+          different than the ID from the HaloFinder given by halo_num
+        * timestep (None): return the progenitor at a certain timestep only
         !!!CARE!!!
-        The timestep is the one from the TREE and not from the simulation, i.e, first outputs
-        without halos are not taken into account
+        The timestep is the one from the TREE and not from the
+        simulation, i.e, first outputs without halos are not taken
+        into account
         """
 
         progenitors = self._get_progenitors(hid)
 
-        if timestep != None:
+        if timestep is not None:
             progenitors = progenitors[progenitors['halo_ts'] == timestep]
 
         return progenitors
@@ -142,15 +143,17 @@ class Forest(object):
                                 for ID in id_main], axis=0, join='inner')
         return main_progs
 
-    def plot_all_trees(self, minmass=-1, maxmass=1e15, radius=1.0, output=None, loc='./'):
+    def plot_all_trees(self, minmass=-1, maxmass=1e15, radius=1.0,
+                       output=None, loc='./'):
         """
-        see plot_halo_tree
-        Compute the above function for all halos with virial mass between minmass and maxmass
-        The width in Mpccm for the dynamics of the BH is radius
-        loc is the location to save the PDF 
+        See plot_halo_tree.
+        Compute the above function for all halos with virial mass
+        between `minmass` and `maxmass`. The width in Mpccm for the
+        dynamics of the BH is radius. `loc` is the location to save the
+        PDF.
         """
 
-        if output == None:
+        if output is None:
             output = str(minmass) + 'To' + str(maxmass) + '_r' + str(radius)
 
         # Normalize min/max mass to 1e11
@@ -165,7 +168,7 @@ class Forest(object):
                 (self.trees.first_prog != -1))
 
         tid = self.trees[mask].halo_id
-        print 'Total: {} halos'.format(len(tid))
+        print('Total: {} halos'.format(len(tid)))
 
         pdf = PdfPages(loc + 'trees{}.pdf'.format(output))
         try:
@@ -180,21 +183,22 @@ class Forest(object):
 
         return 'OK'
 
-    def plot_halo_tree(self, hnum=None, hts=None, radius=1.0, pdffile=None, hid=None, loc='./'):
+    def plot_halo_tree(self, hnum=None, hts=None, radius=1.0,
+                       pdffile=None, hid=None, loc='./'):
         """
         Plot Mass/Merger history of a halo
         Parameters
         ----------
-        hid (None): halo_id of the halo you want to have the merger/mass history
-        hnum (None): halo_num of the halo you want to have the merger history, if used then the timestep of this halo must be given with hts
-        radius (1): width of the window to plot the dynamics of the halo
-        loc ('./'): where to save the plot
+        * hid (None): halo_id of the halo you want to have the merger/mass history
+        * hnum (None): halo_num of the halo you want to have the
+          merger history, if used then the timestep of this halo must
+          be given with hts
+        * radius (1): width of the window to plot the dynamics of the halo
+        * loc ('./'): where to save the plot
         """
 
-        from matplotlib import cm
-
         # Define the selected halo
-        if hid == None:
+        if hid is None:
             hid = int(self.trees.loc[(self.trees.halo_num == hnum) & (
                 self.trees.halo_ts == hts)].halo_id)
         halo = self.trees.ix[hid]
@@ -299,10 +303,11 @@ class Forest(object):
         self.ax[0].scatter(x[others], y[others], c=ocol, s=osc, cmap='Greys',
                            vmin=0, vmax=1., edgecolor=edg,
                            rasterized=True)
-        self.ax[0].scatter(progs.x, progs.y, c=progs.halo_ts, s=sc, cmap='summer',
-                           rasterized=True)
-        self.ax[0].scatter(main_progs.x, main_progs.y, c=main_progs.halo_ts, s=mainsc, cmap='magma',
-                           rasterized=True)
+        self.ax[0].scatter(progs.x, progs.y, c=progs.halo_ts, s=sc,
+                           cmap='summer', rasterized=True)
+        self.ax[0].scatter(main_progs.x, main_progs.y,
+                           c=main_progs.halo_ts, s=mainsc,
+                           cmap='magma', rasterized=True)
         self.ax[0].set_xlabel(r'$x$ (cMpc)')
         self.ax[0].set_ylabel(r'$y$ (cMpc)')
         self.ax[0].set_xlim(xmin, xmax)
@@ -311,10 +316,11 @@ class Forest(object):
         self.ax[1].scatter(z[others], y[others], c=ocol, s=osc, cmap='Greys',
                            vmin=0, vmax=1., edgecolor=edg,
                            rasterized=True)
-        self.ax[1].scatter(progs.z, progs.y, c=progs.halo_ts, s=sc, cmap='summer',
-                           rasterized=True)
-        self.ax[1].scatter(main_progs.z, main_progs.y, c=main_progs.halo_ts, s=mainsc, cmap='magma',
-                           rasterized=True)
+        self.ax[1].scatter(progs.z, progs.y, c=progs.halo_ts, s=sc,
+                           cmap='summer', rasterized=True)
+        self.ax[1].scatter(main_progs.z, main_progs.y,
+                           c=main_progs.halo_ts, s=mainsc,
+                           cmap='magma', rasterized=True)
         self.ax[1].set_xlabel(r'$z$ (cMpc)')
         self.ax[1].set_ylabel(r'$y$ (cMpc)')
         self.ax[1].set_xlim(zmin, zmax)
@@ -323,10 +329,11 @@ class Forest(object):
         self.ax[2].scatter(x[others], z[others], c=ocol, s=osc, cmap='Greys',
                            vmin=0, vmax=1., edgecolor=edg,
                            rasterized=True)
-        self.ax[2].scatter(progs.x, progs.z, c=progs.halo_ts, s=sc, cmap='summer',
-                           rasterized=True)
-        self.ax[2].scatter(main_progs.x, main_progs.z, c=main_progs.halo_ts, s=mainsc, cmap='magma',
-                           rasterized=True)
+        self.ax[2].scatter(progs.x, progs.z, c=progs.halo_ts, s=sc,
+                           cmap='summer', rasterized=True)
+        self.ax[2].scatter(main_progs.x, main_progs.z,
+                           c=main_progs.halo_ts, s=mainsc,
+                           cmap='magma', rasterized=True)
         self.ax[2].set_xlabel(r'$x$ (cMpc)')
         self.ax[2].set_ylabel(r'$z$ (cMpc)')
         self.ax[2].set_xlim(xmin, xmax)
@@ -342,17 +349,16 @@ class Forest(object):
                 dx, dy, dz = descendent[['x', 'y', 'z']]
                 l0 = self.ax[0].plot([px, dx], [py, dy],
                                      lw=1, c='k', zorder=-1)
-                l1 = self.ax[1].plot([pz, dz], [py, dy],
-                                     lw=1, c='k', zorder=-1)
-                l2 = self.ax[2].plot([px, dx], [pz, dz],
-                                     lw=1, c='k', zorder=-1)
+                l1 = self.ax[1].plot([pz, dz], [py, dy], lw=1, c='k',
+                                     zorder=-1)
+                l2 = self.ax[2].plot([px, dx], [pz, dz], lw=1, c='k',
+                                     zorder=-1)
 
-        title = "Halo #{t:d}\n(x, y, z) = ({x:3.3f}, {y:3.3f}, {z:3.3f})".format(t=int(halo.halo_num),
-                                                                                 x=xh /
-                                                                                 sim['Lbox'] + .5,
-                                                                                 y=yh /
-                                                                                 sim['Lbox'] + .5,
-                                                                                 z=zh / sim['Lbox'] + .5)
+        title = "Halo #{t:d}\n(x, y, z) = ({x:3.3f}, {y:3.3f}, {z:3.3f})"
+        title = title.format(t=int(halo.halo_num),
+                             x=xh / sim['Lbox'] + .5,
+                             y=yh / sim['Lbox'] + .5,
+                             z=zh / sim['Lbox'] + .5)
         suptitle = self.fig.suptitle(title, fontsize=18)
 
         if not self.fig.texts:
@@ -388,12 +394,18 @@ class Forest(object):
                          for hts in progs.halo_ts])
         maintime = np.array([self.timestep['age'][int(hts) - 1]
                              for hts in main_progs.halo_ts])
-        self.ax[0].scatter(time, progs.m * 1e11, c=progs.halo_ts, s=sc, cmap='summer',
-                           rasterized=True)
-        self.ax[0].semilogy([self.ds.cosmology.t_from_z(z) / (3600 * 24 * 365 * 1e9) for z in np.logspace(-10, 2, 1000)], 1e12 *
-                            physics.MofZ(halo.m * 1e11 / 1e12, np.logspace(-10, 2, 1000), 1 / self.timestep['aexp'][progs.loc[hid].halo_ts - 1] - 1), 'k')
-        self.ax[0].scatter(maintime, main_progs.m * 1e11, c=main_progs.halo_ts, s=mainsc, cmap='magma',
-                           rasterized=True)
+        self.ax[0].scatter(time, progs.m * 1e11, c=progs.halo_ts,
+                           s=sc, cmap='summer', rasterized=True)
+        self.ax[0].semilogy(
+            [self.ds.cosmology.t_from_z(z) / (3600 * 24 * 365 * 1e9)
+             for z in np.logspace(-10, 2, 1000)],
+            1e12 * physics.MofZ(halo.m * 1e11 / 1e12,
+                                np.logspace(-10, 2, 1000),
+                                1 / self.timestep['aexp'][progs.loc[hid].halo_ts - 1] - 1),
+            'k')
+        self.ax[0].scatter(maintime, main_progs.m * 1e11,
+                           c=main_progs.halo_ts, s=mainsc,
+                           cmap='magma', rasterized=True)
         self.ax[0].set_xlabel(r'$t$ (Gyr)')
         self.ax[0].set_ylabel(r'$M$ ($\mathrm{M}_{\odot}$)')
         self.ax[0].set_ylim(1e11 * progs.m.min() / 3.,
@@ -418,8 +430,8 @@ class Forest(object):
                 halo_ts = main_prog.halo_ts[current_id]
                 progs = self.get_all_progenitors(
                     current_id, timestep=halo_ts - 1)
-                mask_minor = (progs.m / main_prog.m[current_id + 1] > 1. / 20) & (
-                    progs.m / main_prog.m[current_id + 1] < 1. / 4)
+                mask_minor = ((progs.m / main_prog.m[current_id + 1] > 1. / 20) &
+                              (progs.m / main_prog.m[current_id + 1] < 1. / 4))
                 minor_mergers += [len(progs.m[mask_minor])]
                 mask_major = (progs.m / main_prog.m[current_id + 1] >= 1. / 4)
                 major_mergers += [len(progs.m[mask_major]) - 1]
@@ -427,15 +439,39 @@ class Forest(object):
         scc = np.log10(main_prog.m)
         sc = (scc - scc.min()) / (scc.max() - scc.min()) * 500.
         time = np.array([self.timestep['age'][hts - 1]
-                         for hts in main_prog[main_prog.halo_ts != self.trees.halo_ts[hid]].halo_ts])
+                         for hts in main_prog[main_prog.halo_ts !=
+                                              self.trees.halo_ts[hid]].halo_ts])
         self.ax[2].plot(time, np.cumsum(major_mergers)[-1] - np.cumsum(
             major_mergers), color='b', label='1:1 > mass ratio > 1:4 (sim)')
-        self.ax[2].plot(time, [physics.N_merger_until_z(0.25, halo.m * 1e11 / 1e12, self.ds.cosmology.z_from_t(t * 1e9 * 365 * 24 * 3600),
-                                                        self.ds.cosmology.z_from_t(time.max() * 1e9 * 365 * 24 * 3600)) for t in time], color='b', linestyle='--', label='1:1 > mass ratio > 1:4 (theory)')
-        self.ax[2].plot(time, np.cumsum(minor_mergers)[-1] - np.cumsum(minor_mergers),
-                        color='r', label='1:4 > mass ratio > 1:20 (sim)')
-        self.ax[2].plot(time, [physics.N_merger_until_z(1. / 20, halo.m * 1e11 / 1e12, self.ds.cosmology.z_from_t(t * 1e9 * 365 * 24 * 3600), self.ds.cosmology.z_from_t(time.max() * 1e9 * 365 * 24 * 3600)) - physics.N_merger_until_z(
-            1. / 4, halo.m * 1e11 / 1e12, self.ds.cosmology.z_from_t(t * 1e9 * 365 * 24 * 3600), self.ds.cosmology.z_from_t(time.max() * 1e9 * 365 * 24 * 3600)) for t in time], color='r', linestyle='--', label='1:4 > mass ratio > 1:20 (theory)')
+
+        self.ax[2].plot(time,
+                        [physics.N_merger_until_z(
+                            0.25,
+                            halo.m * 1e11 / 1e12,
+                            self.ds.cosmology.z_from_t(t * 1e9 * 365 * 24 * 3600),
+                            self.ds.cosmology.z_from_t(time.max() * 1e9 * 365 * 24 * 3600))
+                         for t in time],
+                        color='b', linestyle='--',
+                        label='1:1 > mass ratio > 1:4 (theory)')
+
+        self.ax[2].plot(time, np.cumsum(minor_mergers)[-1] -
+                        np.cumsum(minor_mergers), color='r',
+                        label='1:4 > mass ratio > 1:20 (sim)')
+
+        self.ax[2].plot(time,
+                        [physics.N_merger_until_z(
+                            1. / 20,
+                            halo.m * 1e11 / 1e12,
+                            self.ds.cosmology.z_from_t(t * 1e9 * 365 * 24 * 3600),
+                            self.ds.cosmology.z_from_t(time.max() * 1e9 * 365 * 24 * 3600))
+                         - physics.N_merger_until_z(
+                             1. / 4,
+                             halo.m * 1e11 / 1e12,
+                             self.ds.cosmology.z_from_t(t * 1e9 * 365 * 24 * 3600),
+                             self.ds.cosmology.z_from_t(time.max() * 1e9 * 365 * 24 * 3600))
+                         for t in time],
+                        color='r', linestyle='--',
+                        label='1:4 > mass ratio > 1:20 (theory)')
         # self.ax[2].scatter(time, [minor_mergers[m] for m in major_mergers],
         #    c=main_prog[main_prog.halo_ts != main_prog.halo_ts.max()].halo_ts,
         #    s=sc, cmap='summer', rasterized=True)
@@ -456,8 +492,9 @@ class Forest(object):
             zz) / (1e9 * 365 * 24 * 3600)) for zz in z])
         ax_z.set_xticklabels(z)
 
-        title = "Halo #{t:d}\nFinal virial mass = {x:.2e} M$_\odot$".format(t=int(halo.halo_num),
-                                                                            x=halo['mvir'] * 1e11)
+        title = "Halo #{t:d}\nFinal virial mass = {x:.2e} M$_\odot$"
+        title = title.format(t=int(halo.halo_num),
+                             x=halo['mvir'] * 1e11)
         suptitle = self.fig.suptitle(title, fontsize=18)
 
         if not self.fig.texts:
@@ -481,9 +518,6 @@ class Forest(object):
 
         Blah
         """
-
-        from matplotlib import cm
-
         # Define the selected halo
         halo = self.trees.ix[hid]
         sim = self.sim
@@ -506,8 +540,8 @@ class Forest(object):
 
         time = np.array([self.timestep['age'][hts - 1]
                          for hts in progs.halo_ts])
-        self.ax.scatter(time, progs.m * 1e11, c=progs.halo_ts, s=sc, cmap='summer',
-                        rasterized=True)
+        self.ax.scatter(time, progs.m * 1e11, c=progs.halo_ts, s=sc,
+                        cmap='summer', rasterized=True)
         self.ax.set_xlabel(r'$t$ (Gyr)')
         self.ax.set_ylabel(r'$M$ ($\mathrm{M}_{\odot}$)')
         self.ax.set_ylim(1e11 * progs.m.min() / 3., 1e11 * progs.m.max() * 3.)
@@ -524,8 +558,8 @@ class Forest(object):
     def _get_timestep_number(self):
         import glob
         import os.path
-        halos_results = [os.path.basename(path)
-                         for path in glob.glob(self.folder + 'halos_results.*')]
+        halos_results = [os.path.basename(path) for path in
+                         glob.glob(self.folder + 'halos_results.*')]
         return len(halos_results)
 
     def get_ioutlist(self, inputfile='input_TreeMaker.dat'):
@@ -551,7 +585,8 @@ class Forest(object):
 
         outputs = []
 
-        # We know that the name of the tree_bricks file should be "tree_bricksXXX"
+        # We know that the name of the tree_bricks file should be
+        # "tree_bricksXXX"
         tbbasename = 'tree_bricks'
         # We can skip the first line, which should be "nsnaps 1"
         for path in lines[1:]:
@@ -563,11 +598,11 @@ class Forest(object):
         return outputs
 
     def _read_timesteps_props(self, tsfile):
-        with ff.FortranFile(tsfile) as ts:
-            nsteps = ts.readInts()
-            nhalos = ts.readInts()
-            aexp = ts.readReals()
-            age_univ = ts.readReals()
+        with FF(tsfile, 'r') as ts:
+            nsteps = ts.read_ints()
+            nhalos = ts.read_ints()
+            aexp = ts.read_reals()
+            age_univ = ts.read_reals()
 
         return dict(nsteps=nsteps,
                     nhalos=nhalos,
@@ -579,16 +614,16 @@ class Forest(object):
                    'first_prog', 'next_prog', 'descendent_id', 'last_prog',
                    'host_halo_id', 'host_sub_id', 'next_sub_id')
         IDs = pd.DataFrame(columns=ID_keys)
-        with ff.FortranFile(tfile) as t:
-            [nsteps, nIDs, nIndex] = t.readInts()
-            nhalos = t.readInts()
+        with FF(tfile, 'r') as t:
+            [nsteps, nIDs, nIndex] = t.read_ints()
+            nhalos = t.read_ints()
 
-            for ts in xrange(nsteps):
+            for ts in range(nsteps):
                 if nhalos[ts] > 0:
-                    IDs_raw = t.readInts('l').reshape((nhalos[ts], nIDs))
+                    IDs_raw = t.read_ints('l').reshape((nhalos[ts], nIDs))
                     id_df = pd.DataFrame(IDs_raw, columns=ID_keys)
                     IDs = pd.concat((IDs, id_df))
-                    t.readInts()  # Skip indexes
+                    t.read_ints()  # Skip indexes
         return IDs
 
     def _read_halo_props(self, pfile):
@@ -597,12 +632,12 @@ class Forest(object):
                   'Lx', 'Ly', 'Lz', 'ep', 'ek', 'et')
         props = pd.DataFrame(columns=p_keys)
 
-        with ff.FortranFile(pfile) as p:
-            [nsteps, nprops] = p.readInts()
-            nhalos = p.readInts()
-            for ts in xrange(nsteps):
+        with FF(pfile, 'r') as p:
+            [nsteps, nprops] = p.read_ints()
+            nhalos = p.read_ints()
+            for ts in range(nsteps):
                 if nhalos[ts] > 0:
-                    p_raw = p.readReals().reshape((nhalos[ts], nprops))
+                    p_raw = p.read_reals().reshape((nhalos[ts], nprops))
                     p_df = pd.DataFrame(p_raw, columns=p_keys)
                     props = pd.concat((props, p_df))
 
@@ -612,7 +647,7 @@ class Forest(object):
         target = self.trees.ix[hid]
         mask = ((self.trees.halo_id >= hid) &
                 (self.trees.halo_id <= target['last_prog']))
-        if timestep != None:
+        if timestep is not None:
             mask = (mask & (self.trees.halo_ts == timestep))
 
         progenitors = self.trees.loc[mask].copy()

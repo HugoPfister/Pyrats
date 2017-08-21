@@ -8,10 +8,6 @@ in the Ramses Analysis ToolSuite (RATS).
 TODO: Some more documentation
 """
 
-import numpy as np
-import pandas as pd
-import utils
-import yt
 import glob
 import pyrats
 

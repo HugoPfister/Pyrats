@@ -2,29 +2,19 @@
 
 """Module to deal with halos, to be used with HaloMaker.
 
-This module is heavily inspired by the set of IDL routines originally found
-in the Ramses Analysis ToolSuite (RATS).
+This module is heavily inspired by the set of IDL routines originally
+found in the Ramses Analysis ToolSuite (RATS).
 
 TODO: Some more documentation
+
 """
 
 import numpy as np
 import pandas as pd
 import yt
+from scipy.io import FortranFile as FF
 
-import utils
-import fields
-import sink
-
-__author__ = "Maxime Trebitsch"
-__copyright__ = "Copyright 2015, Maxime Trebitsch"
-__credits__ = ["Maxime Trebitsch", "Jeremy Blaizot",
-               "Leo Michel-Dansac"]
-__license__ = "BSD"
-__version__ = "0.2"
-__maintainer__ = "Maxime Trebitsch"
-__email__ = "maxime.trebitsch@ens-lyon.org"
-__status__ = "Beta"
+from . import fields, sink
 
 
 class HaloList(object):
@@ -62,8 +52,12 @@ class HaloList(object):
 
         return halostr
 
-    def show_halos(self, hid=[], axis='z', folder='./', field=('deposit', 'all_density'), weight_field=('index', 'ones')):
-        """Plot a density map of the whole box with a circle around halos (pretty useless, documentation TBW)
+    def show_halos(self, hid=[], axis='z', folder='./',
+                   field=('deposit', 'all_density'),
+                   weight_field=('index', 'ones')):
+        """
+        Plot a density map of the whole box with a circle around halos
+        (pretty useless, documentation TBW)
         Parameters
         ----------
         hid : list of int
@@ -80,8 +74,10 @@ class HaloList(object):
             hlist = hid
 
         for ID in hlist:
-            p.annotate_sphere([self.halos['x'][ID], self.halos['y'][ID], self.halos['z'][ID]], radius=(
-                self.halos['rvir'][ID], 'Mpc'), circle_args={'color': 'yellow'})
+            p.annotate_sphere(
+                [self.halos['x'][ID], self.halos['y'][ID], self.halos['z'][ID]],
+                radius=(self.halos['rvir'][ID], 'Mpc'),
+                circle_args={'color': 'yellow'})
         p.annotate_timestamp(corner='upper_left', time=False, redshift=True)
         p.set_cmap(field=field, cmap='viridis')
         p.annotate_scale(corner='upper_right')
@@ -89,25 +85,34 @@ class HaloList(object):
         p.save(folder + str(self.ds) + '_halos')
         return
 
-    def plot_halo(self, hid, axis='z', folder='./', field=('deposit', 'all_density'), r=None, slice=False, weight_field=('index', 'ones'),
-                  cmap='viridis', limits=[0, 0], plotsinks=False, units=None, plothalos=False, masshalomin=1e10):
+    def plot_halo(self, hid, axis='z', folder='./',
+                  field=('deposit', 'all_density'), r=None,
+                  slice=False, weight_field=('index', 'ones'),
+                  cmap='viridis', limits=[0, 0], plotsinks=False,
+                  units=None, plothalos=False, masshalomin=1e10):
         """
         Plot a map centered on halo with ID hid
         Parameters
         ---------
-        hid: ID of the halo you want to center the map on
-        axis ('z'): Axis to do the projection
-        folder ('./'): where to save the map
-        field (('deposit','all_density')): field you want to project
-        r (None): width of the map e.g. (10, 'Mpc')
-        slice (False): If True then slice instead of projection
-        weight_field ('index','ones'): field used to weight the projection, default value is here to divide by the length of the LOS
-        cmap ('viridis'): colormap used for the map
-        limits ([0,0]): Min and Max limits for the colorbar, if Max/Min > 50 then logscale is used
-        plotsinks (True): Plot black dots at the position of BHs with their ID aside
-        units (None): Units for the width e.g. ('Mpccm')
-        plothalos (False): add black circles to show halos of mass greater than masshalomin, the radius of the circles is the virial radius of the halo
-        masshalomin (1e10): see above
+        * hid: ID of the halo you want to center the map on
+        * axis ('z'): Axis to do the projection
+        * folder ('./'): where to save the map
+        * field (('deposit','all_density')): field you want to project
+        * r (None): width of the map e.g. (10, 'Mpc')
+        * slice (False): If True then slice instead of projection
+        * weight_field ('index','ones'): field used to weight the
+          projection, default value is here to divide by the length of
+          the LOS
+        * cmap ('viridis'): colormap used for the map
+        * limits ([0,0]): Min and Max limits for the colorbar, if
+          Max/Min > 50 then logscale is used
+        * plotsinks (True): Plot black dots at the position of BHs with
+          their ID aside
+        * units (None): Units for the width e.g. ('Mpccm')
+        * plothalos (False): add black circles to show halos of mass
+          greater than masshalomin, the radius of the circles is the
+          virial radius of the halo
+        * masshalomin (1e10): see above
 
         /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\
         This routines must be updated if filtered quantities want to be
@@ -117,7 +122,8 @@ class HaloList(object):
 
         if 'stars' in field[1]:
             yt.add_particle_filter(
-                "stars", function=fields.stars, filtered_type="all", requires=["particle_age"])
+                "stars", function=fields.stars, filtered_type="all",
+                requires=["particle_age"])
             self.ds.add_particle_filter("stars")
         if 'dm' in field[1]:
             yt.add_particle_filter(
@@ -135,7 +141,8 @@ class HaloList(object):
                              axis=axis, fields=field, center=c)
         else:
             p = yt.ProjectionPlot(self.ds, data_source=dd, axis=axis,
-                                  fields=field, center=c, weight_field=weight_field)
+                                  fields=field, center=c,
+                                  weight_field=weight_field)
 
         p.set_width((float(dd.radius.in_units('kpccm')), str('kpccm')))
         if limits != [0, 0]:
@@ -151,21 +158,33 @@ class HaloList(object):
             self.ds.sink = sink.get_sinks(self.ds)
             for bhid in self.ds.sink.ID:
                 ch = self.ds.sink.loc[self.ds.sink.ID == bhid]
-                if (((h.x.item() - ch.x.item())**2 + (h.y.item() - ch.y.item())**2 + (h.z.item() - ch.z.item())**2) <
-                        ((dd.radius.in_units('code_length') / 2)**2)):
-                    p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item(
-                    )], marker='.', plot_args={'color': 'black', 's': 100})
-                    p.annotate_text([ch.x.item(), ch.y.item(), ch.z.item()], text=str(
-                        ch.ID.item()), text_args={'color': 'black'})
+                if (((h.x.item() - ch.x.item())**2 +
+                     (h.y.item() - ch.y.item())**2 +
+                     (h.z.item() - ch.z.item())**2) <
+                    ((dd.radius.in_units('code_length') / 2)**2)):
+
+                    p.annotate_marker(
+                        [ch.x.item(), ch.y.item(), ch.z.item()],
+                        marker='.', plot_args={'color': 'black', 's': 100})
+
+                    p.annotate_text([ch.x.item(), ch.y.item(), ch.z.item()],
+                                    text=str(ch.ID.item()),
+                                    text_args={'color': 'black'})
 
         if plothalos:
             h = self.halos.loc[hid]
             for hid in self.ID:
                 ch = self.loc[hid]
-                if ((ch.m > masshalomin) & (((h.x.item() - ch.x.item())**2 + (h.y.item() - ch.y.item())**2 + (h.z.item() - ch.z.item())**2) < ((dd.radius.in_units('code_length') / 2)**2))):
+                if ((ch.m > masshalomin) &
+                    (((h.x.item() - ch.x.item())**2 +
+                      (h.y.item() - ch.y.item())**2 +
+                      (h.z.item() - ch.z.item())**2) <
+                     ((dd.radius.in_units('code_length') / 2)**2))):
 
-                    p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item(
-                    )], (ch.rvir.item(), 'Mpc'), circle_args={'color': 'black'})
+                    p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
+                                      (ch.rvir.item(), 'Mpc'),
+                                      circle_args={'color': 'black'})
+
                     p.annotate_text([ch.x.item(), ch.y.item(),
                                      ch.z.item()], text=str(ch.ID.item()))
 
@@ -175,7 +194,7 @@ class HaloList(object):
         p.save(folder + '/' + str(self.ds) + '_halo' + str(hid))
         return
 
-    ### Accessors ###
+    # Accessors
     def __getitem__(self, item):
         if str(item) in self.halos:
             return self.halos[item]
@@ -191,14 +210,12 @@ class HaloList(object):
     def __iter__(self):
         return self.halos.iterrows()
 
-    ### Printing functions ###
+    # Printing functions
     def __str__(self):
         return self.halos.__str__()
 
-    ### Convenience functions ###
+    # Convenience functions
     def _read_halos(self, data_set, with_contam_option=False):
-        import fortranfile as ff
-
         halo_keys = ('ID', 'nbpart', 'level', 'min_part_id',
                      'host', 'hostsub', 'nbsub', 'nextsub',
                      'x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly', 'Lz',
@@ -207,13 +224,13 @@ class HaloList(object):
         filename = '{s.folder}/Halos/{s.iout}/tree_bricks{s.iout:03d}'.format(
             s=self)
 
-        with ff.FortranFile(filename) as tb:
-            [npart] = tb.readInts()
-            [massp] = tb.readReals()
-            [aexp] = tb.readReals()
-            [omega_t] = tb.readReals()
-            [age] = tb.readReals()
-            [nhalos, nsubs] = tb.readInts()
+        with FF(filename, 'r') as tb:
+            [npart] = tb.read_ints()
+            [massp] = tb.read_reals()
+            [aexp] = tb.read_reals()
+            [omega_t] = tb.read_reals()
+            [age] = tb.read_reals()
+            [nhalos, nsubs] = tb.read_ints()
 
             # Save the age/aexp, the mass of the particle,
             # as well as the number of (sub)halos
@@ -223,26 +240,25 @@ class HaloList(object):
             self.age = age
             self.massp = massp
             data = np.empty(shape=(nhalos + nsubs, len(halo_keys)))
-            #halos = pd.DataFrame(columns=halo_keys, data=np.empty(shape=(nhalos+nsubs, len(halo_keys))))
 
             for ihalo in range(nhalos + nsubs):
-                [nbpart] = tb.readInts()  # Number of particles
-                listp = np.array(tb.readInts())  # List of the particles IDs
-                [ID] = tb.readInts()  # Halo ID
-                [__] = tb.readInts()  # skip timestep
-                [level, host, hostsub, nbsub, nextsub] = tb.readInts()
-                [m] = tb.readReals()  # Total mass
-                [x, y, z] = tb.readReals()  # Center
-                [vx, vy, vz] = tb.readReals()  # Velocity
-                [Lx, Ly, Lz] = tb.readReals()  # Angular momentum
-                [r, a, b, c] = tb.readReals()  # Shape (ellipticity)
-                [ek, ep, et] = tb.readReals()  # Energetics
-                [spin] = tb.readReals()  # Total angular momentum
-                [rvir, mvir, tvir, cvel] = tb.readReals()  # Virial parameters
-                [rho0, r_c] = tb.readReals()  # ?
+                [nbpart] = tb.read_ints()  # Number of particles
+                listp = np.array(tb.read_ints())  # List of the particles IDs
+                [ID] = tb.read_ints()  # Halo ID
+                [__] = tb.read_ints()  # skip timestep
+                [level, host, hostsub, nbsub, nextsub] = tb.read_ints()
+                [m] = tb.read_reals()  # Total mass
+                [x, y, z] = tb.read_reals()  # Center
+                [vx, vy, vz] = tb.read_reals()  # Velocity
+                [Lx, Ly, Lz] = tb.read_reals()  # Angular momentum
+                [r, a, b, c] = tb.read_reals()  # Shape (ellipticity)
+                [ek, ep, et] = tb.read_reals()  # Energetics
+                [spin] = tb.read_reals()  # Total angular momentum
+                [rvir, mvir, tvir, cvel] = tb.read_reals()  # Virial parameters
+                [rho0, r_c] = tb.read_reals()  # ?
 
                 if with_contam_option:
-                    [contam] = tb.readInts()  # Contamination
+                    [contam] = tb.read_ints()  # Contamination
 
                 # Add the halo to the list
                 # halos.loc[ihalo] = [ID, nbpart, level, listp.min(),

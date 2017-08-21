@@ -8,15 +8,16 @@ import os as os
 
 from . import *
 
-
 def load(files='', stars=False, dm=False, bh=False, halo=False):
     """
-    Load a RAMSES output, with options to filter stars, DM, BHs, or halos (from HaloFinder)
-    files: output/info from ramses
-    stars (False): if True, then add a filter to select star particles
-    dm (False): if True, then add a filter to select dm particles
-    bh (False): if True, load BHs
-    halo (False): if True, load halos, they must be in ./Halos and computed with HaloFinder
+    Load a RAMSES output, with options to filter stars, DM, BHs, or
+    halos (from HaloFinder)
+    * files: output/info from ramses
+    * stars (False): if True, then add a filter to select star particles
+    * dm (False): if True, then add a filter to select dm particles
+    * bh (False): if True, load BHs
+    * halo (False): if True, load halos, they must be in ./Halos and
+      computed with HaloFinder
     """
 
     if type(files) == int:
@@ -24,8 +25,8 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
     ds = yt.load(files)
 
     if stars:
-        yt.add_particle_filter(
-            "stars", function=fields.stars, filtered_type="all", requires=["particle_age"])
+        yt.add_particle_filter("stars", function=fields.stars,
+                               filtered_type="all", requires=["particle_age"])
         ds.add_particle_filter("stars")
 
     if dm:
@@ -35,11 +36,12 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
     if bh:
         ds.sink = sink.get_sinks(ds)
 
-    if (halo) & (os.path.exists('./Halos/' + str(int(str(ds)[-5:])) + '/tree_bricks' + str(ds)[-3:])):
+    if (halo) and (os.path.exists('./Halos/' + str(int(str(ds)[-5:])) + '/tree_bricks' + str(ds)[-3:])):
         ds.halo = halos.HaloList(ds, contam=False)
         if os.path.exists('./Galaxies/GalProp' + str(str(ds)[-6:]) + '.csv'):
             columns = ['pollution', 'mgal', 'sigma', 'dmdt1_1',
-                       'dmdt10_1', 'dmdt50_1', 'dmdt1_10', 'dmdt10_10', 'dmdt50_10']
+                       'dmdt10_1', 'dmdt50_1', 'dmdt1_10',
+                       'dmdt10_10', 'dmdt50_10']
             tmp = pd.read_csv('./Galaxies/GalProp' +
                               str(str(ds)[-6:]) + '.csv', names=columns)
             tmp.index += 1
@@ -72,9 +74,6 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
                     ds.halo.loc[ds.halo.halos.ID == hid, 'bhid'] = bhid
                 else:
                     bhold = ds.sink[ds.sink.ID == oldID]
-                    oldx = float(bhold.x)
-                    oldy = float(bhold.y)
-                    oldz = float(bhold.z)
                     oldm = float(bhold.M)
                     if float(bh.M) > oldm:
                         ds.halo.loc[ds.halo.halos.ID == hid, 'bhid'] = bhid
