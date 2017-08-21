@@ -1,0 +1,2 @@
+include README* COPYING.txt
+recursive-include yt *.py *.pyx *.pxd *.h README* *.txt LICENSE* *.cu

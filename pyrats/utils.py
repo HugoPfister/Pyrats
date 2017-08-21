@@ -5,25 +5,24 @@ TODO:
     - Lots and lots of things
 
 """
-import numpy as np
-import yt
-
-
-
+from scipy.io import FortranFile as FF
 # Classes stuff
 class ImplementError(Exception):
     """Custom class for 'not implemented yet' errors"""
     # TODO: replace with NotImplementedError
+
     def __init__(self):
         Exception.__init__(self, 'Not implemented yet')
 
 # Useful functions
+
+
 def read_header(ds):
     """Read a RAMSES output header file."""
     import re
-    
-    folder='./'
-    iout=int(str(ds)[-5:])
+
+    folder = './'
+    iout = int(str(ds)[-5:])
 
     hname = '{0}/output_{1:05d}/header_{1:05d}.txt'.format(folder, iout)
     with open(hname, 'r') as hfile:
@@ -50,37 +49,37 @@ def read_header(ds):
             fields = fields.replace('iord', 'id')
         header['fields'] = fields.split()
 
-
-    
     return header
+
 
 def read_cooling(ds):
     """Read the cooling table from the cooling.out file."""
-    import fortranfile as ff
-    
-    folder='.'
-    iout=int(str(ds)[-5:])
+
+    folder = '.'
+    iout = int(str(ds)[-5:])
 
     fname = '{F}/output_{I:05d}/cooling_{I:05d}.out'.format(F=folder,
                                                             I=iout)
     cool = dict()
-    with ff.FortranFile(fname) as cf:
-        n1, n2 = cf.readInts()
+    with FF(fname, 'r') as cf:
+        n1, n2 = cf.read_ints()
         cool['n_nH'] = n1
         cool['n_T2'] = n2
-        cool['nH'] = cf.readReals('d')
-        cool['T2'] = cf.readReals('d')
-        cool['cooling'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['heating'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['cooling_com'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['heating_com'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['metal'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['cooling_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['heating_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['cooling_com_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['heating_com_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['metal_prime'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['mu'] = cf.readReals('d').reshape((n1, n2), order='F')
-        cool['spec'] = cf.readReals('d').reshape((n1, n2, 6), order='F')
+        cool['nH'] = cf.read_reals('d')
+        cool['T2'] = cf.read_reals('d')
+        cool['cooling'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['heating'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['cooling_com'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['heating_com'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['metal'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['cooling_prime'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['heating_prime'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['cooling_com_prime'] = cf.read_reals(
+            'd').reshape((n1, n2), order='F')
+        cool['heating_com_prime'] = cf.read_reals(
+            'd').reshape((n1, n2), order='F')
+        cool['metal_prime'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['mu'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['spec'] = cf.read_reals('d').reshape((n1, n2, 6), order='F')
 
     return cool
