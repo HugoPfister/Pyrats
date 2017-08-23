@@ -199,8 +199,8 @@ class Forest(object):
 
         # Define the selected halo
         if hid is None:
-            hid = int(self.trees.loc[(self.trees.halo_num == hnum) & (
-                self.trees.halo_ts == hts)].halo_id)
+            hid = (self.trees.loc[(self.trees.halo_num == hnum) & (
+                self.trees.halo_ts == hts)].halo_id).astype(int)
         halo = self.trees.ix[hid]
         sim = self.sim
 
