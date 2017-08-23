@@ -17,12 +17,20 @@ def stars(pfilter, data):
 def dm(pfilter, data):
     '''
     Select DM particles'''
-    if 'particle_age' in data:
-        filter = ((data['particle_identifier'] > 0) &
-                  (data['particle_age'] == data['particle_age'].min()) &
-                  (data['particle_age'] != None))
+    #if 'particle_age' in data:
+    #    filter = ((data['particle_identifier'] > 0) &
+    #              (data['particle_age'] == data['particle_age'].min()) &
+    #              (data['particle_age'] != None))
+    #else:
+    #    filter = data['particle_identifier'] > 0
+   
+    if data['particle_age'] != None:
+         filter = (data['particle_age'] == data['particle_age'].min()) & (data['particle_identifier'] > 0)
     else:
-        filter = data['particle_identifier'] > 0
+        filter= (data['particle_identifier'] >0)
+
+    
+    
     return filter
 
 
