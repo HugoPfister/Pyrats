@@ -178,13 +178,13 @@ class Forest(object):
         self.fig.savefig(pdf, format='pdf', dpi=200)
 
         for ihalo in tqdm(tid):
-            self.plot_halo_tree(int(ihalo), radius=radius, pdffile=pdf)
+            self.plot_halo_tree(hid=int(ihalo), radius=radius, pdffile=pdf)
         pdf.close()
 
         return 'OK'
 
-    def plot_halo_tree(self, hnum=None, hts=None, radius=1.0,
-                       pdffile=None, hid=None, loc='./'):
+    def plot_halo_tree(self,hid=None, hnum=None, hts=None, radius=1.0,
+                       pdffile=None, loc='./'):
         """
         Plot Mass/Merger history of a halo
         Parameters
@@ -366,8 +366,7 @@ class Forest(object):
         if pdffile:
             self.fig.savefig(pdffile, format='pdf', dpi=200)
         else:
-            plt.savefig(
-                loc + 'halo_{:d}.png'.format(int(halo.halo_num)), dpi=100, format='png')
+            plt.savefig(loc + 'halo_{:d}dynamics.png'.format(int(halo.halo_num)), dpi=100, format='png')
 
         # A bit of cleaning
         # for axx in self.ax:
