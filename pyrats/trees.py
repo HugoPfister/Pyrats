@@ -601,8 +601,8 @@ class Forest(object):
         with FF(tsfile, 'r') as ts:
             nsteps = ts.read_ints()
             nhalos = ts.read_ints()
-            aexp = ts.read_reals(np.int32)
-            age_univ = ts.read_reals(np.int32)
+            aexp = ts.read_reals(np.float32)
+            age_univ = ts.read_reals(np.float32)
 
         return dict(nsteps=nsteps,
                     nhalos=nhalos,
@@ -637,7 +637,7 @@ class Forest(object):
             nhalos = p.read_ints()
             for ts in range(nsteps):
                 if nhalos[ts] > 0:
-                    p_raw = p.read_reals(np.int32).reshape((nhalos[ts], nprops))
+                    p_raw = p.read_reals(np.float32).reshape((nhalos[ts], nprops))
                     p_df = pd.DataFrame(p_raw, columns=p_keys)
                     props = pd.concat((props, p_df))
 
