@@ -226,10 +226,10 @@ class HaloList(object):
 
         with FF(filename, 'r') as tb:
             [npart] = tb.read_ints()
-            [massp] = tb.read_reals()
-            [aexp] = tb.read_reals()
-            [omega_t] = tb.read_reals()
-            [age] = tb.read_reals()
+            [massp] = tb.read_reals(np.float32)
+            [aexp] = tb.read_reals(np.float32)
+            [omega_t] = tb.read_reals(np.float32)
+            [age] = tb.read_reals(np.float32)
             [nhalos, nsubs] = tb.read_ints()
 
             # Save the age/aexp, the mass of the particle,
@@ -247,15 +247,15 @@ class HaloList(object):
                 [ID] = tb.read_ints()  # Halo ID
                 [__] = tb.read_ints()  # skip timestep
                 [level, host, hostsub, nbsub, nextsub] = tb.read_ints()
-                [m] = tb.read_reals()  # Total mass
-                [x, y, z] = tb.read_reals()  # Center
-                [vx, vy, vz] = tb.read_reals()  # Velocity
-                [Lx, Ly, Lz] = tb.read_reals()  # Angular momentum
-                [r, a, b, c] = tb.read_reals()  # Shape (ellipticity)
-                [ek, ep, et] = tb.read_reals()  # Energetics
-                [spin] = tb.read_reals()  # Total angular momentum
-                [rvir, mvir, tvir, cvel] = tb.read_reals()  # Virial parameters
-                [rho0, r_c] = tb.read_reals()  # ?
+                [m] = tb.read_reals(np.float32)  # Total mass
+                [x, y, z] = tb.read_reals(np.float32)  # Center
+                [vx, vy, vz] = tb.read_reals(np.float32)  # Velocity
+                [Lx, Ly, Lz] = tb.read_reals(np.float32)  # Angular momentum
+                [r, a, b, c] = tb.read_reals(np.float32)  # Shape (ellipticity)
+                [ek, ep, et] = tb.read_reals(np.float32)  # Energetics
+                [spin] = tb.read_reals(np.float32)  # Total angular momentum
+                [rvir, mvir, tvir, cvel] = tb.read_reals(np.float32)  # Virial parameters
+                [rho0, r_c] = tb.read_reals(np.float32)  # ?
 
                 if with_contam_option:
                     [contam] = tb.read_ints()  # Contamination

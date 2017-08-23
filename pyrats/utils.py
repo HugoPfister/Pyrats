@@ -65,21 +65,21 @@ def read_cooling(ds):
         n1, n2 = cf.read_ints()
         cool['n_nH'] = n1
         cool['n_T2'] = n2
-        cool['nH'] = cf.read_reals('d')
-        cool['T2'] = cf.read_reals('d')
-        cool['cooling'] = cf.read_reals('d').reshape((n1, n2), order='F')
-        cool['heating'] = cf.read_reals('d').reshape((n1, n2), order='F')
-        cool['cooling_com'] = cf.read_reals('d').reshape((n1, n2), order='F')
-        cool['heating_com'] = cf.read_reals('d').reshape((n1, n2), order='F')
-        cool['metal'] = cf.read_reals('d').reshape((n1, n2), order='F')
-        cool['cooling_prime'] = cf.read_reals('d').reshape((n1, n2), order='F')
-        cool['heating_prime'] = cf.read_reals('d').reshape((n1, n2), order='F')
+        cool['nH'] = cf.read_reals(np.float64)
+        cool['T2'] = cf.read_reals(np.float64)
+        cool['cooling'] = cf.read_reals(np.float64).reshape((n1, n2), order='F')
+        cool['heating'] = cf.read_reals(np.float64).reshape((n1, n2), order='F')
+        cool['cooling_com'] = cf.read_reals(np.float64).reshape((n1, n2), order='F')
+        cool['heating_com'] = cf.read_reals(np.float64).reshape((n1, n2), order='F')
+        cool['metal'] = cf.read_reals(np.float64).reshape((n1, n2), order='F')
+        cool['cooling_prime'] = cf.read_reals(np.float64).reshape((n1, n2), order='F')
+        cool['heating_prime'] = cf.read_reals(np.float64).reshape((n1, n2), order='F')
         cool['cooling_com_prime'] = cf.read_reals(
-            'd').reshape((n1, n2), order='F')
+            np.float64).reshape((n1, n2), order='F')
         cool['heating_com_prime'] = cf.read_reals(
-            'd').reshape((n1, n2), order='F')
-        cool['metal_prime'] = cf.read_reals('d').reshape((n1, n2), order='F')
-        cool['mu'] = cf.read_reals('d').reshape((n1, n2), order='F')
-        cool['spec'] = cf.read_reals('d').reshape((n1, n2, 6), order='F')
+            np.float64).reshape((n1, n2), order='F')
+        cool['metal_prime'] = cf.read_reals(np.float64).reshape((n1, n2), order='F')
+        cool['mu'] = cf.read_reals(np.float64).reshape((n1, n2), order='F')
+        cool['spec'] = cf.read_reals(np.float64).reshape((n1, n2, 6), order='F')
 
     return cool
