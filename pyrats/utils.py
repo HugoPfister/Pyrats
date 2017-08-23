@@ -6,6 +6,8 @@ TODO:
 
 """
 from scipy.io import FortranFile as FF
+import numpy as np
+
 # Classes stuff
 class ImplementError(Exception):
     """Custom class for 'not implemented yet' errors"""
