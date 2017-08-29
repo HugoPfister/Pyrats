@@ -127,4 +127,7 @@ def get_sinks(ds):
         sink.vx = sink.vx * (ds.arr(1, 'code_velocity').in_units('km / s'))
         sink.vy = sink.vy * (ds.arr(1, 'code_velocity').in_units('km / s'))
         sink.vz = sink.vz * (ds.arr(1, 'code_velocity').in_units('km / s'))
+        sink.x = sink.x / ds['boxlen'] 
+        sink.y = sink.y / ds['boxlen'] 
+        sink.z = sink.z / ds['boxlen'] 
     return sink
