@@ -13,7 +13,7 @@ def stars(pfilter, data):
     if data.ds.cosmological_simulation==1:
         filter = (data['particle_age'] >= 0) & (data['particle_age'] != None)
     else:
-        filter = not (data['particle_age'] == 0)
+        filter = (data['particle_age'] != 0)
     return filter
 
 
