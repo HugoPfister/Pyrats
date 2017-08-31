@@ -619,7 +619,7 @@ class Forest(object):
 
             for ts in range(nsteps):
                 if nhalos[ts] > 0:
-                    IDs_raw = t.read_ints('l').reshape((nhalos[ts], nIDs))
+                    IDs_raw = t.read_ints(np.int64).reshape((nhalos[ts], nIDs))
                     id_df = pd.DataFrame(IDs_raw, columns=ID_keys)
                     IDs = pd.concat((IDs, id_df))
                     t.read_ints()  # Skip indexes

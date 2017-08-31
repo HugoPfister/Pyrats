@@ -12,19 +12,22 @@ TODO: Some more documentation
 import numpy as np
 import pandas as pd
 import yt
+from yt.utilities.logger import ytLogger as mylog
+import yt.utilities.fortran_utils as fpu
+from yt.funcs import get_pbar
 from scipy.io import FortranFile as FF
 
 from . import fields, sink
 
 
 class HaloList(object):
-    def __init__(self, ds, contam=False):
+    def __init__(self, ds, folder='.', contam=False):
         """
         PandaList with halos and their properties
         """
 
-        self.folder = '.'
-        self.iout = int(str(ds)[-5:])
+        self.folder = folder
+        self.iout = int(str(ds).split('_')[1])
         self.halos = self._read_halos(data_set=ds, with_contam_option=contam)
         self.ds = ds
 
@@ -186,7 +189,7 @@ class HaloList(object):
                                       circle_args={'color': 'black'})
 
                     p.annotate_text([ch.x.item(), ch.y.item(),
-                                     ch.z.item()], text=str(ch.ID.item()))
+                                     ch.z.item()], text=str(int(ch.ID.item())))
 
         p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
         p.set_cmap(field=field, cmap=cmap)
@@ -224,13 +227,13 @@ class HaloList(object):
         filename = '{s.folder}/Halos/{s.iout}/tree_bricks{s.iout:03d}'.format(
             s=self)
 
-        with FF(filename, 'r') as tb:
-            [npart] = tb.read_ints()
-            [massp] = tb.read_reals(np.float32)
-            [aexp] = tb.read_reals(np.float32)
-            [omega_t] = tb.read_reals(np.float32)
-            [age] = tb.read_reals(np.float32)
-            [nhalos, nsubs] = tb.read_ints()
+        with open(filename, 'rb') as f:
+            [npart] = fpu.read_vector(f, 'i')
+            [massp] = fpu.read_vector(f, 'f')
+            [aexp] = fpu.read_vector(f, 'f')
+            [omega_t] = fpu.read_vector(f, 'f')
+            [age] = fpu.read_vector(f, 'f')
+            [nhalos, nsubs] = fpu.read_vector(f, 'i')
 
             # Save the age/aexp, the mass of the particle,
             # as well as the number of (sub)halos
@@ -241,24 +244,30 @@ class HaloList(object):
             self.massp = massp
             data = np.empty(shape=(nhalos + nsubs, len(halo_keys)))
 
+            mylog.info('Brick: halos       : %s' % nhalos)
+            mylog.info('Brick: sub halos   : %s' % nsubs)
+            mylog.info('Brick: aexp        : %s' % aexp)
+
+            pbar = get_pbar('', nhalos+nsubs)
             for ihalo in range(nhalos + nsubs):
-                [nbpart] = tb.read_ints()  # Number of particles
-                listp = np.array(tb.read_ints())  # List of the particles IDs
-                [ID] = tb.read_ints()  # Halo ID
-                [__] = tb.read_ints()  # skip timestep
-                [level, host, hostsub, nbsub, nextsub] = tb.read_ints()
-                [m] = tb.read_reals(np.float32)  # Total mass
-                [x, y, z] = tb.read_reals(np.float32)  # Center
-                [vx, vy, vz] = tb.read_reals(np.float32)  # Velocity
-                [Lx, Ly, Lz] = tb.read_reals(np.float32)  # Angular momentum
-                [r, a, b, c] = tb.read_reals(np.float32)  # Shape (ellipticity)
-                [ek, ep, et] = tb.read_reals(np.float32)  # Energetics
-                [spin] = tb.read_reals(np.float32)  # Total angular momentum
-                [rvir, mvir, tvir, cvel] = tb.read_reals(np.float32)  # Virial parameters
-                [rho0, r_c] = tb.read_reals(np.float32)  # ?
+                pbar.update()
+                [nbpart] = fpu.read_vector(f, 'i')  # Number of particles
+                listp = fpu.read_vector(f, 'i')  # List of the particles IDs
+                [ID] = fpu.read_vector(f, 'i')  # Halo ID
+                fpu.skip(f, 1) # Skip timestep
+                [level, host, hostsub, nbsub, nextsub] = fpu.read_vector(f, 'i')
+                [m] = fpu.read_vector(f, 'f')  # Total mass
+                [x, y, z] = fpu.read_vector(f, 'f')  # Center
+                [vx, vy, vz] = fpu.read_vector(f, 'f')  # Velocity
+                [Lx, Ly, Lz] = fpu.read_vector(f, 'f')  # Angular momentum
+                [r, a, b, c] = fpu.read_vector(f, 'f')  # Shape (ellipticity)
+                [ek, ep, et] = fpu.read_vector(f, 'f')  # Energetics
+                [spin] = fpu.read_vector(f, 'f')  # Total angular momentum
+                [rvir, mvir, tvir, cvel] = fpu.read_vector(f, 'f')  # Virial parameters
+                [rho0, r_c] = fpu.read_vector(f, 'f')  # ?
 
                 if with_contam_option:
-                    [contam] = tb.read_ints()  # Contamination
+                    [contam] = fpu.read_vector(f, 'i')  # Contamination
 
                 # Add the halo to the list
                 # halos.loc[ihalo] = [ID, nbpart, level, listp.min(),
