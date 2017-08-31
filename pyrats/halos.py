@@ -242,7 +242,7 @@ class HaloList(object):
             self.aexp = aexp
             self.age = age
             self.massp = massp
-            data = np.empty(shape=(nhalos + nsubs, len(halo_keys)))
+            data = np.empty(shape=(nhalos + nsubs, len(halo_keys)), dtype=object)
 
             mylog.info('Brick: halos       : %s' % nhalos)
             mylog.info('Brick: sub halos   : %s' % nsubs)
@@ -280,6 +280,8 @@ class HaloList(object):
                                x, y, z, vx, vy, vz, Lx, Ly, Lz,
                                a, b, c, ek, ep, et, rho0, r_c,
                                spin, m, r, mvir, rvir, tvir, cvel]
+
+
             halos = pd.DataFrame(columns=halo_keys, data=data)
 
             # Get properties in the right units
@@ -292,4 +294,6 @@ class HaloList(object):
             halos.y = halos.y / scale_mpc + .5
             halos.z = halos.z / scale_mpc + .5
 
-            return halos.set_index(halos.ID)
+            return halos.set_index('ID')
+
+
