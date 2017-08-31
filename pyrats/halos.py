@@ -299,7 +299,7 @@ class HaloList(object):
             halos.m *= 1e11
             halos.mvir *= 1e11
             # Positions and distances
-            scale_mpc = float(data_set.length_unit / 3.08e24)
+            scale_mpc = float(data_set.length_unit.in_units('cm') / 3.08e24)
             halos.x = halos.x / scale_mpc + .5
             halos.y = halos.y / scale_mpc + .5
             halos.z = halos.z / scale_mpc + .5

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
-"""Module to deal with sinks 
+"""
+Module to deal with sinks
+TODO: get boxlen to rescale and use in a similar way cosmo/ideal sim
 """
 import matplotlib
 # matplotlib.use('PDF')
@@ -23,14 +25,6 @@ class Sinks(object):
         folder = glob.glob('output*/info*')
         folder.sort()
         ds = yt.load(folder[0])
-        sim = ds
-        _sim = {}
-        _sim['h'] = float(ds.cosmology.hubble_constant)
-        _sim['Om'] = ds.omega_matter
-        _sim['Ol'] = ds.omega_lambda
-        _sim['Lbox'] = float(ds.length_unit.in_units('Mpccm'))
-
-        self.sim = _sim
         self.ds = ds
 
         files = glob.glob('./sinks/BH*')
@@ -117,9 +111,10 @@ def get_sinks(ds):
         names=columns_name)
     if len(sink.ID) > 0:
         sink['M'] = sink.M * (ds.arr(1, 'code_mass').in_units('Msun'))
-        sink['Mdot'] = sink.M * \
+        sink['Mdot'] = sink.Mdot * \
             (ds.arr(1, 'code_mass/code_time').in_units('Msun/yr'))
-        sink.age = np.copy(
+        if ds.cosmological_simulation==1:
+            sink.age = np.copy(
             ds.arr(get_ramses_ages(
                 ds.t_frw, ds.tau_frw, ds.dtau,
                 ds.time_simu,
@@ -127,7 +122,12 @@ def get_sinks(ds):
                 / ds['unit_t'],
                 ds['time'] - np.copy(sink.age),
                 ds.n_frw / 2, len(sink.age)), 'code_time').in_units('Myr'))
+        else:
+            sink.age =sink.age*ds.arr(1,'code_time').in_units('Myr')
         sink.vx = sink.vx * (ds.arr(1, 'code_velocity').in_units('km / s'))
         sink.vy = sink.vy * (ds.arr(1, 'code_velocity').in_units('km / s'))
         sink.vz = sink.vz * (ds.arr(1, 'code_velocity').in_units('km / s'))
+        sink.x = sink.x / ds['boxlen'] 
+        sink.y = sink.y / ds['boxlen'] 
+        sink.z = sink.z / ds['boxlen'] 
     return sink
