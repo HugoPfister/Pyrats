@@ -2,11 +2,13 @@ __all__ = ['halos', 'utils', 'trees', 'visualization',
            'fields', 'physics', 'snaplist', 'sink']
 
 import yt
+from yt.utilities.logger import ytLogger as mylog
 import numpy as np
 import pandas as pd
 import os as os
 
-from . import *
+from . import halos, fields, visualization, utils, physics, sink
+
 
 def load(files='', stars=False, dm=False, bh=False, halo=False):
     """
@@ -21,23 +23,46 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
     """
 
     if type(files) == int:
-        files = 'output_{:05}/info_'.format(files) + '{:05}.txt'.format(files)
+        files = 'output_{files:05}/info_{files:05}.txt'.format(files=files)
+
     ds = yt.load(files)
+    ids = int(str(ds).split('_')[1])
 
     if stars:
+        mylog.info('Filtering stars')
         yt.add_particle_filter("stars", function=fields.stars,
                                filtered_type="all", requires=["particle_age"])
         ds.add_particle_filter("stars")
 
     if dm:
+        mylog.info('Filtering dark matter')
         yt.add_particle_filter("dm", function=fields.dm, filtered_type="all")
         ds.add_particle_filter("dm")
 
     if bh:
+        mylog.info('Reading sinks')
         ds.sink = sink.get_sinks(ds)
 
-    if (halo) and (os.path.exists('./Halos/' + str(int(str(ds)[-5:])) + '/tree_bricks' + str(ds)[-3:])):
-        ds.halo = halos.HaloList(ds, contam=False)
+    halo_ok = False
+    if halo:
+        if type(halo) == str:
+            # Remove trailing '/'
+            if halo[-1] == '/':
+                halo = halo[:-1]
+            hp = os.path.split(halo)[0]
+            p = os.path.join(halo, str(ids), 'tree_bricks%.3i' % ids)
+        else:
+            hp = './'
+            p = os.path.join('Halos', str(ids), 'tree_bricks%.3i' % ids)
+
+        halo_ok = os.path.exists(p)
+        if not halo_ok:
+            mylog.warning('Halo flag is set yet we could not find any'
+                          ' Halo directory. Tried %s' % p)
+
+    if halo_ok:
+        mylog.info('Reading halos')
+        ds.halo = halos.HaloList(ds, folder=hp, contam=False)
         if os.path.exists('./Galaxies/GalProp' + str(str(ds)[-6:]) + '.csv'):
             columns = ['pollution', 'mgal', 'sigma', 'dmdt1_1',
                        'dmdt10_1', 'dmdt50_1', 'dmdt1_10',
@@ -55,7 +80,7 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
                      'spin', 'm', 'r', 'mvir', 'rvir', 'tvir', 'cvel']
         ds.halo.halos = pd.DataFrame(columns=halo_keys)
 
-    if halo & bh:
+    if halo_ok and bh:
         L = ds.length_unit.in_units('Mpc')
         ds.sink['hid'] = -1
         ds.halo.halos['bhid'] = -1
