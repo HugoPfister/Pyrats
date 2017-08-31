@@ -281,8 +281,18 @@ class HaloList(object):
                                a, b, c, ek, ep, et, rho0, r_c,
                                spin, m, r, mvir, rvir, tvir, cvel]
 
+            types = {}
+            for k in ('ID', 'nbpart', 'level', 'min_part_id',
+                      'host', 'hostsub', 'nbsub', 'nextsub'):
+                types[k] = np.int64
+            for k in ('x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly', 'Lz',
+                      'a', 'b', 'c', 'ek', 'ep', 'et', 'rho0', 'r_c',
+                      'spin', 'm', 'r', 'mvir', 'rvir', 'tvir', 'cvel'):
+                types[k] = np.float64
+            dd = {k: data[:, i].astype(types[k])
+                  for i, k in enumerate(halo_keys)}
 
-            halos = pd.DataFrame(columns=halo_keys, data=data)
+            halos = pd.DataFrame(dd)
 
             # Get properties in the right units
             # Masses
