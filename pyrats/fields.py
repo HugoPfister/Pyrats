@@ -19,17 +19,19 @@ def stars(pfilter, data):
 
 def dm(pfilter, data):
     '''
-    Select DM particles'''
-    if data.ds.cosmological_simulation==1:    
-        if data['particle_age'] != None:
-             filter = (data['particle_age'] == data['particle_age'].min()) & (data['particle_identifier'] > 0)
-        else:
-             filter= (data['particle_identifier'] >0)
+    Select DM particles
+    MODIFY AFTER THE PR FOR 'particle_age' /w YT
+    '''
+    #if data.ds.cosmological_simulation==1:    
+    if data['particle_age'] != None:
+         filter = (data['particle_age'] == data['particle_age'].min()) & (data['particle_identifier'] > 0)
     else:
-        if data['particle_age'] != None:
-             filter = (data['particle_age'] == 0) & (data['particle_identifier'] > 0)
-        else:
-             filter= (data['particle_identifier'] >0)
+         filter= (data['particle_identifier'] >0)
+    #else:
+    #    if data['particle_age'] != None:
+    #         filter = (data['particle_age'] == 0) & (data['particle_identifier'] > 0)
+    #    else:
+    #         filter= (data['particle_identifier'] >0)
     return filter
 
 
