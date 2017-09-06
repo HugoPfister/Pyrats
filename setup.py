@@ -19,5 +19,5 @@ setup(name=package_name,
       license='MIT',
       package_dir={package_name: package_name},
       packages=[package_name],
-      install_requires=["yt", "pandas", "scipy"]
+      install_requires=["yt", "pandas", "scipy", "tqdm"]
 )
