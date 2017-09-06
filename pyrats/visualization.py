@@ -8,7 +8,7 @@ from . import halos, trees, sink
 
 def plot_all_snapshots(axis='z', field=('deposit', 'all_density'),
                        folder='./', cbarmin=None, cbarmax=None,
-                       weight_field=('index', 'ones')):
+                       weight_field=('index', 'ones'), width=None, axis_units='kpc'):
     """
     Plot a map of all the snapshots for this simulations
     Parameters
@@ -23,10 +23,17 @@ def plot_all_snapshots(axis='z', field=('deposit', 'all_density'),
     files = glob.glob('output_*/info*')
     for dd in tqdm(files):
         ds = yt.load(dd)
-        p = yt.ProjectionPlot(ds, axis=axis, fields=field,
-                              weight_field=weight_field, axes_unit=('Mpccm'))
+        if width != None:
+            sp=ds.sphere([0.5,0.5,0.5], width)
+            p = yt.ProjectionPlot(ds, axis=axis, fields=field,
+                              weight_field=weight_field, axes_unit=axis_units,
+                               data_source=sp)
+            p.set_width(width)
+        else:
+            p = yt.ProjectionPlot(ds, axis=axis, fields=field,
+                              weight_field=weight_field, axes_unit=axis_units)
         p.set_cmap(field=field, cmap='viridis')
-        p.annotate_timestamp(corner='upper_left', time=False, redshift=True)
+        p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
         p.annotate_scale(corner='upper_right')
         p.set_zlim(field=field, zmin=cbarmin, zmax=cbarmax)
         os.system('mkdir ' + folder + '/snapshots')
@@ -34,11 +41,13 @@ def plot_all_snapshots(axis='z', field=('deposit', 'all_density'),
     return
 
 
-def plot_halo_history(hnum, axis='z', field=('deposit', 'all_density'),
-                      folder='./', weight_field=('index', 'ones'), slice=False,
-                      size=None, cmap='viridis', limits=[0, 0],
-                      plotsinks=False, units=None, plothalos=False,
-                      masshalomin=1e10):
+def plot_halo_history(hnum, axis='z', 
+                      field=('deposit', 'all_density'), folder='./', 
+                      weight_field=('index', 'ones'), slice=False,
+                      size=None, units=None, 
+                      cmap='viridis', limits=[0, 0],
+                      plotsinks=False, SinkDynamicsTimeScale = -1, 
+                      plothalos=False, masshalomin=1e10):
     """
     TODO but not urgent: gather this and plot_bh_history in a function
     with a switch for BH/halos
@@ -65,6 +74,9 @@ def plot_halo_history(hnum, axis='z', field=('deposit', 'all_density'),
         os.system('mkdir ' + path)
     path = path + '/' + field[0] + field[1]
     os.system('mkdir ' + path)
+    path = path + '/' + 'Axis_' + axis
+    os.system('mkdir ' + path)
+
     prog_id = [_ for _ in t.get_main_progenitor(hid).halo_num]
     h = halos.HaloList(ds)
     if size is None:
@@ -79,7 +91,7 @@ def plot_halo_history(hnum, axis='z', field=('deposit', 'all_density'),
         h.plot_halo(prog_id[-i - 1], axis=axis, folder=path,
                     field=field, r=rvirfin, weight_field=weight_field,
                     cmap=cmap, limits=limits, plotsinks=plotsinks,
-                    units=units)
+                    units=units, SinkDynamicsTimeScale=SinkDynamicsTimeScale)
     return
 
 
@@ -141,14 +153,16 @@ def plot_bh_history(bhid, axis='z', field=('deposit', 'all_density'),
                                   fields=field, center=c,
                                   weight_field=weight_field)
 
+        if units != None:
+            p.set_unit(field=field, new_unit=units)
+
         p.set_width((float(dd.radius.in_units('kpccm')), str('kpccm')))
         if limits != [0, 0]:
             p.set_zlim(field, limits[0], limits[1])
             if limits[1] / limits[0] > 50:
                 p.set_log(field, log=True)
 
-        if units != None:
-            p.set_unit(field=field, new_unit=units)
+
 
         for bhnum in ds.sink.ID:
             ch = ds.sink.loc[ds.sink.ID == bhnum]
@@ -168,6 +182,7 @@ def plot_bh_history(bhid, axis='z', field=('deposit', 'all_density'),
         p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
         p.set_cmap(field=field, cmap=cmap)
         p.annotate_scale(corner='upper_right')
+        p.hide_axes()
         p.save(path + '/' + str(ds) + '_bh' + str(bhid))
 
     return

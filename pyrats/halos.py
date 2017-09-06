@@ -89,10 +89,12 @@ class HaloList(object):
         return
 
     def plot_halo(self, hid, axis='z', folder='./',
-                  field=('deposit', 'all_density'), r=None,
+                  field=('deposit', 'all_density'),
                   slice=False, weight_field=('index', 'ones'),
-                  cmap='viridis', limits=[0, 0], plotsinks=False,
-                  units=None, plothalos=False, masshalomin=1e10):
+                  cmap='viridis', limits=[0, 0], 
+                  r=None, units=None, 
+                  plotsinks=False, SinkDynamicsTimeScale=-1,
+                  plothalos=False, masshalomin=1e10):
         """
         Plot a map centered on halo with ID hid
         Parameters
@@ -111,7 +113,9 @@ class HaloList(object):
           Max/Min > 50 then logscale is used
         * plotsinks (True): Plot black dots at the position of BHs with
           their ID aside
-        * units (None): Units for the width e.g. ('Mpccm')
+        * SinkDynamicsTimeScale (-1, in Myr) : Plot lines for the BHs dynamics between
+          t-SinkDynamicsTimeScale and t+SinkDynamicsTimeScale
+        * units (None): Units for colorbar ('Mpccm')
         * plothalos (False): add black circles to show halos of mass
           greater than masshalomin, the radius of the circles is the
           virial radius of the halo
@@ -147,23 +151,27 @@ class HaloList(object):
                                   fields=field, center=c,
                                   weight_field=weight_field)
 
-        p.set_width((float(dd.radius.in_units('kpccm')), str('kpccm')))
+        p.set_width(r)
+        p.set_axes_unit('code_length')
+        
+        if units != None:
+            p.set_unit(field=field, new_unit=units)
+
         if limits != [0, 0]:
             p.set_zlim(field, limits[0], limits[1])
             if limits[1] / limits[0] > 50:
                 p.set_log(field, log=True)
 
-        if units != None:
-            p.set_unit(field=field, new_unit=units)
-
         if plotsinks:
-            h = self.halos.loc[hid]
+            x=[]
+            y=[]
+            s=sink.Sinks()
             self.ds.sink = sink.get_sinks(self.ds)
             for bhid in self.ds.sink.ID:
                 ch = self.ds.sink.loc[self.ds.sink.ID == bhid]
-                if (((h.x.item() - ch.x.item())**2 +
-                     (h.y.item() - ch.y.item())**2 +
-                     (h.z.item() - ch.z.item())**2) <
+                if (((c[0] - ch.x.item())**2 +
+                     (c[1] - ch.y.item())**2 +
+                     (c[2] - ch.z.item())**2) <
                     ((dd.radius.in_units('code_length') / 2)**2)):
 
                     p.annotate_marker(
@@ -173,6 +181,21 @@ class HaloList(object):
                     p.annotate_text([ch.x.item(), ch.y.item(), ch.z.item()],
                                     text=str(ch.ID.item()),
                                     text_args={'color': 'black'})
+                    
+                    if SinkDynamicsTimeScale > 0:
+                        ch=s.sink[bhid].loc[
+                         (s.sink[bhid].t>float((self.ds.current_time-
+                            self.ds.arr(SinkDynamicsTimeScale, 'Myr')).in_units('Gyr'))) &
+                         (s.sink[bhid].t<float((self.ds.current_time+
+                            self.ds.arr(SinkDynamicsTimeScale, 'Myr')).in_units('Gyr')))]
+                        x=list(ch.x)
+                        y=list(ch.y)
+                        z=list(ch.z)
+                        for i in range(len(x)-1):
+                            p.annotate_line([x[i],y[i],z[i]],
+                                [x[i+1],y[i+1],z[i+1]],
+                                coord_system='data', plot_args={'color':'black'})
+                                                                                    
 
         if plothalos:
             h = self.halos.loc[hid]
@@ -194,6 +217,7 @@ class HaloList(object):
         p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
         p.set_cmap(field=field, cmap=cmap)
         p.annotate_scale(corner='upper_right')
+        p.hide_axes() 
         p.save(folder + '/' + str(self.ds) + '_halo' + str(hid))
         return
 
