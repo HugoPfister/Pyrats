@@ -18,7 +18,7 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
     * stars (False): if True, then add a filter to select star particles
     * dm (False): if True, then add a filter to select dm particles
     * bh (False): if True, load BHs
-    * halo (False): if True, load halos, they must be in ./Halos and
+    * halo (False): if True, load halos, tree_brick must be in ./Halos/ID output/tree_brick and
       computed with HaloFinder
     """
 
