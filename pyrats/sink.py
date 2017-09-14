@@ -106,9 +106,7 @@ class Sinks(object):
 
 def get_sinks(ds):
     columns_name = ['ID', 'M', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'age', 'Mdot']
-    sink = pd.read_csv(
-        'output' + str(ds)[-6:] + '/sink' + str(ds)[-6:] + '.csv',
-        names=columns_name)
+    sink = pd.read_csv('output' + str(ds)[-6:] + '/sink' + str(ds)[-6:] + '.csv', names=columns_name)
     if len(sink.ID) > 0:
         sink['M'] = sink.M * (ds.arr(1, 'code_mass').in_units('Msun'))
         sink['Mdot'] = sink.Mdot * \

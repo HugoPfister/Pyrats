@@ -37,7 +37,17 @@ def plot_all_snapshots(axis='z', field=('deposit', 'all_density'),
         p.annotate_scale(corner='upper_right')
         p.set_zlim(field=field, zmin=cbarmin, zmax=cbarmax)
         os.system('mkdir ' + folder + '/snapshots')
-        p.save(folder + '/snapshots/')
+        os.system('mkdir ' + folder + '/snapshots/'+field[0]+field[1])
+        if width != None:
+            os.system('mkdir ' + folder + '/snapshots/'+field[0]+field[1]+'/'+str(width[0])+width[1])
+            path = folder + '/snapshots/'+field[0]+field[1]+'/'+width[0]+width[1]
+        else:
+            os.system('mkdir ' + folder + '/snapshots/'+field[0]+field[1]+'/all')
+            path = folder + '/snapshots/'+field[0]+field[1]+'/all'
+            
+
+        
+        p.save(path)
     return
 
 
@@ -155,8 +165,13 @@ def plot_bh_history(bhid, axis='z', field=('deposit', 'all_density'),
 
         if units != None:
             p.set_unit(field=field, new_unit=units)
+        
+        if ds.cosmological_simulation == 1:
+            p.set_width((float(dd.radius.in_units('kpccm')), str('kpccm')))
+        else:
+            p.set_width((float(dd.radius.in_units('kpc')), str('kpc')))
 
-        p.set_width((float(dd.radius.in_units('kpccm')), str('kpccm')))
+
         if limits != [0, 0]:
             p.set_zlim(field, limits[0], limits[1])
             if limits[1] / limits[0] > 50:
