@@ -5,6 +5,156 @@ import os as os
 
 from . import halos, trees, sink
 
+def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
+        field=('deposit','all_density'), weight_field=('index','ones'), slice=False,
+        width=(10, 'kpc'), axis_units='kpc', folder='./',
+        cbarunits=None, cbarbounds=None, cmap='viridis',
+        hnum=None, plothalos=False, masshalomin=1e10,
+        bhid=None, plotsinks=False, sinkdynamics=0):
+
+    files = glob.glob('output_*/info*')
+    files.sort()
+
+    path=folder + '/snapshots'
+    os.system('mkdir ' + path)
+
+    if hnum != None:
+        t = trees.Forest(LoadGal=False)
+        hid = int(t.trees[(t.trees.halo_ts == t.trees.halo_ts.max())
+                      & (t.trees.halo_num == hnum)].halo_id)
+        prog_id = [_ for _ in t.get_main_progenitor(hid).halo_num]
+
+        path = path + '/Halo' + str(hnum)
+        os.system('mkdir ' + path)
+
+    if bhid != None:
+        path = path + '/BH' + str(bhid)
+        os.system('mkdir ' + path)
+
+    if slice:
+        path = path + '/Slice'
+        os.system('mkdir ' + path)
+    else:
+        path = path + '/Proj'
+        os.system('mkdir ' + path)
+
+    if width != None:
+        path = path + '/' + str(width[0]) + width[1]
+        os.system('mkdir ' + path)
+
+    path = path + '/' + field[0] + field[1]
+    os.system('mkdir ' + path)
+    path = path + '/' + 'Axis_' + axis
+    os.system('mkdir ' + path)
+
+    for i in tqdm(range(len(files))):
+        ds = yt.load(files[i])
+        
+        if 'stars' in field[1]:
+            yt.add_particle_filter(
+                "stars", function=fields.stars, filtered_type="all",
+                requires=["particle_age"])
+            ds.add_particle_filter("stars")
+        if 'dm' in field[1]:
+            yt.add_particle_filter(
+                "dm", function=fields.dm, filtered_type="all")
+            ds.add_particle_filter("dm")
+        
+        c = center
+
+        if hnum != None:
+            h = halos.HaloList(ds)
+            hid = prog_id[-i - 1]
+            hh = h.halos.loc[hid]
+            c = [h.halos['x'][hid], h.halos['y'][hid], h.halos['z'][hid]]
+
+        if bhid != None:
+            ds.sink = sink.get_sinks(ds)
+            bh = ds.sink.loc[ds.sink.ID == bhid]
+            c = [bh.x.item(), bh.y.item(), bh.z.item()]
+
+        sp=ds.sphere(c, width)
+
+        if slice:
+            p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field)
+        else:
+            p= yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field)
+
+        if plotsinks:
+            s=sink.Sinks()
+            ds.sink = sink.get_sinks(ds)
+            for bhnum in ds.sink.ID:
+                ch = ds.sink.loc[ds.sink.ID == bhnum]
+                if (((center[0] - ch.x.item())**2 +
+                    (center[1] - ch.y.item())**2 +
+                    (center[2] - ch.z.item())**2) <
+                    ((sp.radius.in_units('code_length') / 2)**2)):
+
+                    p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
+                                  marker='.', plot_args={'color':
+                                  'black', 's': 100})
+
+                    p.annotate_text([ch.x.item(), ch.y.item(), ch.z.item()],
+                                text=str(ch.ID.item()),
+                                text_args={'color': 'black'})
+
+                if sinkdynamics > 0:
+                        ch=s.sink[bhnum].loc[
+                         (s.sink[bhnum].t>float((ds.current_time-
+                            ds.arr(sinkdynamics, 'Myr')).in_units('Gyr'))) &
+                         (s.sink[bhnum].t<float((ds.current_time+
+                            ds.arr(sinkdynamics, 'Myr')).in_units('Gyr')))]
+                        x=list(ch.x)
+                        y=list(ch.y)
+                        z=list(ch.z)
+                        for i in range(len(x)-1):
+                            p.annotate_line([x[i],y[i],z[i]],
+                                [x[i+1],y[i+1],z[i+1]],
+                                coord_system='data', plot_args={'color':'black'})
+
+        if plothalos:
+            for hid in h.ID:
+                ch = h.loc[hid]
+                if ((ch.m > masshalomin) &
+                    (((center[0] - ch.x.item())**2 +
+                      (center[1] - ch.y.item())**2 +
+                      (center[2] - ch.z.item())**2) <
+                     ((dd.radius.in_units('code_length') / 2)**2))):
+
+                    p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
+                                      (ch.rvir.item(), 'Mpc'),
+                                      circle_args={'color': 'black'})
+
+                    p.annotate_text([ch.x.item(), ch.y.item(),
+                                     ch.z.item()], text=str(int(ch.ID.item())))
+
+
+            
+
+
+
+        p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
+        p.annotate_scale(corner='upper_right')
+
+        p.set_cmap(field=field, cmap=cmap)
+        if cbarunits !=None:
+            p.set_unit(field=field, new_unit=cbarunits)
+        if cbarbounds !=None:
+            p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
+            if cbarbounds[1] / cbarbounds[0] > 50:
+                p.set_log(field, log=True)
+
+        p.set_axes_unit(width[1])
+        p.set_width(width)
+
+        p.save(path)
+
+    return
+
+
+    
+
+
 
 def plot_all_snapshots(axis='z', field=('deposit', 'all_density'),
                        folder='./', cbarmin=None, cbarmax=None,
@@ -40,7 +190,7 @@ def plot_all_snapshots(axis='z', field=('deposit', 'all_density'),
         os.system('mkdir ' + folder + '/snapshots/'+field[0]+field[1])
         if width != None:
             os.system('mkdir ' + folder + '/snapshots/'+field[0]+field[1]+'/'+str(width[0])+width[1])
-            path = folder + '/snapshots/'+field[0]+field[1]+'/'+width[0]+width[1]
+            path = folder + '/snapshots/'+field[0]+field[1]+'/'+str(width[0])+width[1]
         else:
             os.system('mkdir ' + folder + '/snapshots/'+field[0]+field[1]+'/all')
             path = folder + '/snapshots/'+field[0]+field[1]+'/all'
@@ -102,102 +252,4 @@ def plot_halo_history(hnum, axis='z',
                     field=field, r=rvirfin, weight_field=weight_field,
                     cmap=cmap, limits=limits, plotsinks=plotsinks,
                     units=units, SinkDynamicsTimeScale=SinkDynamicsTimeScale)
-    return
-
-
-def plot_bh_history(bhid, axis='z', field=('deposit', 'all_density'),
-                    folder='./', weight_field=('index', 'ones'),
-                    slice=False, size=(1, 'kpccm'), cmap='viridis',
-                    limits=[0, 0], units=None):
-    """
-    TODO but not urgent: gather this and plot_bh_history in a function
-    with a switch for BH/halos
-
-    Plot a map, at each output, of BH with ID bhid at the last output
-    of the simulation Parametersn
-    ----------
-    * bhid: ID, for the last output, of the bh you want to plot
-    Other paramters are the one used in halo.plot_halo (the routine
-    halo.plot halo has almost been copy/paste)
-    """
-
-    files = glob.glob('output_*/info*')
-    files.sort()
-    ds = yt.load(files[-1])
-    path = folder + '/BH' + str(bhid)
-    os.system('mkdir ' + path)
-    path = path + '/' + str(size[0]) + size[1]
-    os.system('mkdir ' + path)
-    path = path + '/' + field[0] + field[1]
-    os.system('mkdir ' + path)
-
-    if 'cm' in size[1]:
-        r = (size[0] * (1 + ds.current_redshift), size[1])
-    else:
-        r = size
-
-    for i in tqdm(range(len(files))):
-        ds = yt.load(files[-i - 1])
-        ds.sink = sink.get_sinks(ds)
-
-        bh = ds.sink.loc[ds.sink.ID == bhid]
-        c = [bh.x.item(), bh.y.item(), bh.z.item()]
-
-        if 'stars' in field[1]:
-            yt.add_particle_filter(
-                "stars", function=fields.stars, filtered_type="all",
-                requires=["particle_age"])
-            ds.add_particle_filter("stars")
-        if 'dm' in field[1]:
-            yt.add_particle_filter(
-                "dm", function=fields.dm, filtered_type="all")
-            ds.add_particle_filter("dm")
-
-        dd = ds.sphere(c, r)
-
-        if slice:
-            p = yt.SlicePlot(ds, data_source=dd, axis=axis,
-                             fields=field, center=c)
-        else:
-            p = yt.ProjectionPlot(ds, data_source=dd, axis=axis,
-                                  fields=field, center=c,
-                                  weight_field=weight_field)
-
-        if units != None:
-            p.set_unit(field=field, new_unit=units)
-        
-        if ds.cosmological_simulation == 1:
-            p.set_width((float(dd.radius.in_units('kpccm')), str('kpccm')))
-        else:
-            p.set_width((float(dd.radius.in_units('kpc')), str('kpc')))
-
-
-        if limits != [0, 0]:
-            p.set_zlim(field, limits[0], limits[1])
-            if limits[1] / limits[0] > 50:
-                p.set_log(field, log=True)
-
-
-
-        for bhnum in ds.sink.ID:
-            ch = ds.sink.loc[ds.sink.ID == bhnum]
-            if (((bh.x.item() - ch.x.item())**2 +
-                 (bh.y.item() - ch.y.item())**2 +
-                 (bh.z.item() - ch.z.item())**2) <
-                ((dd.radius.in_units('code_length') / 2)**2)):
-
-                p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
-                                  marker='.', plot_args={'color':
-                                  'black', 's': 100})
-
-                p.annotate_text([ch.x.item(), ch.y.item(), ch.z.item()],
-                                text=str(ch.ID.item()),
-                                text_args={'color': 'black'})
-
-        p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
-        p.set_cmap(field=field, cmap=cmap)
-        p.annotate_scale(corner='upper_right')
-        p.hide_axes()
-        p.save(path + '/' + str(ds) + '_bh' + str(bhid))
-
     return
