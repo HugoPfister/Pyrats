@@ -40,12 +40,22 @@ class Forest(object):
     r,rvir -> Mpc
     """
 
-    def __init__(self, LoadGal=True):
+    def __init__(self, snap=None, LoadGal=True):
                  # sim={'Lbox': 10.0, 'h': 0.6711, 'Om': 0.3175, 'Ol': 0.6825}):
 
-        folder = glob.glob('output*/info*')
-        folder.sort()
-        ds = yt.load(folder[-1])
+        paths = glob.glob('output*/info*')
+        paths.sort()
+        if snap is None:
+            i = -1
+        else:
+            path = 'output_{0:05d}/info_{0:05d}.txt'.format(snap)
+            if path not in paths:
+                raise FileNotFoundError
+
+            i = paths.index(path)
+
+        ds = yt.load(paths[i])
+
         sim = ds
         _sim = {}
         _sim['h'] = float(ds.cosmology.hubble_constant)
@@ -61,7 +71,7 @@ class Forest(object):
         self.snap = self._get_timestep_number()
 
         self.read_tree(LoadGal=LoadGal)
-        self.outputs = folder[-int(self.trees.halo_ts.max()):]
+        self.outputs = paths[-int(self.trees.halo_ts.max()):]
 
     def read_tree(self, LoadGal=True):
         """
@@ -180,10 +190,11 @@ class Forest(object):
         for ihalo in tqdm(tid):
             self.plot_halo_tree(hid=int(ihalo), radius=radius, pdffile=pdf)
         pdf.close()
+        plt.close('all')
 
         return 'OK'
 
-    def plot_halo_tree(self,hid=None, hnum=None, hts=None, radius=1.0,
+    def plot_halo_tree(self, hid=None, hnum=None, hts=None, radius=1.0,
                        pdffile=None, loc='./'):
         """
         Plot Mass/Merger history of a halo
@@ -411,7 +422,7 @@ class Forest(object):
                             1e11 * progs.m.max() * 3.)
         self.ax[0].set_xlim(time.min(), time.max())
         self.ax[0].set_yscale('log')
-        z = np.unique([int(1 / self.timestep['aexp'][int(hts) - 1] - 1)
+        z = np.unique([int((1 / self.timestep['aexp'][int(hts) - 1] - 1) * 2) / 2.
                        for hts in main_progs.halo_ts])
         z = z[1:-1]
         ax_z = self.ax[0].twiny()
@@ -651,3 +662,19 @@ class Forest(object):
 
         progenitors = self.trees.loc[mask].copy()
         return progenitors
+
+
+    def get_main_children(tree, hid, timestep=None):
+        # Get current timestep
+        cts = tree.loc[hid].halo_ts
+
+        children = pd.DataFrame(tree.loc[hid:hid])
+
+        for ts in range(cts+1, tree.halo_ts.max()):
+            prev_hid = hid
+            # Get most massive one
+            hid = tree.loc[hid].descendent_id
+
+            children = pd.concat((children, tree.loc[hid:hid]))
+
+        return children
