@@ -104,6 +104,6 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
                         ds.halo.loc[ds.halo.halos.index == hid, 'bhid'] = bhid
 
                 ds.sink.loc[ds.sink.ID == bhid, 'hid'] = float(
-                    ds.halo.halos.index[hid])
+                    ds.halo.halos.index[hid-1])
 
     return ds
