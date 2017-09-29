@@ -10,7 +10,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         width=(10, 'kpc'), axis_units='kpc', folder='./',
         cbarunits=None, cbarbounds=None, cmap='viridis',
         hnum=None, plothalos=False, masshalomin=1e10,
-        bhid=None, plotsinks=False, sinkdynamics=0):
+        bhid=None, plotsinks=False, sinkdynamics=0,
+        snap=-1):
 
     files = glob.glob('output_*/info*')
     files.sort()
@@ -18,11 +19,15 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     path=folder + '/snapshots'
     os.system('mkdir ' + path)
 
+    istart=0
     if hnum != None:
         t = trees.Forest(LoadGal=False)
         hid = int(t.trees[(t.trees.halo_ts == t.trees.halo_ts.max())
                       & (t.trees.halo_num == hnum)].halo_id)
         prog_id = [_ for _ in t.get_main_progenitor(hid).halo_num]
+        prog_id = prog_id[::-1]
+        istart=len(files) - len(prog_id)
+        files=files[istart:]
 
         path = path + '/Halo' + str(hnum)
         os.system('mkdir ' + path)
@@ -30,6 +35,15 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     if bhid != None:
         path = path + '/BH' + str(bhid)
         os.system('mkdir ' + path)
+        s=sink.Sinks()
+        tform=s.sink[bhid].t.min()
+        imin=0
+        for f in files:
+            ds=yt.load(f)
+            if ds.current_time < ds.arr(tform, 'Gyr'):
+                imin+=1
+        files=files[imin:]
+
 
     if slice:
         path = path + '/Slice'
@@ -46,6 +60,11 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     os.system('mkdir ' + path)
     path = path + '/' + 'Axis_' + axis
     os.system('mkdir ' + path)
+
+    if snap != -1:
+        files=[files[i-istart-1] for i in snap]
+        if hnum != None:
+            prog_id=[prog_id[i-istart-1] for i in snap]
 
     for i in tqdm(range(len(files))):
         ds = yt.load(files[i])
@@ -64,7 +83,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
         if hnum != None:
             h = halos.HaloList(ds)
-            hid = prog_id[-i - 1]
+            hid = prog_id[i]
             hh = h.halos.loc[hid]
             c = [h.halos['x'][hid], h.halos['y'][hid], h.halos['z'][hid]]
 
@@ -74,20 +93,20 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             c = [bh.x.item(), bh.y.item(), bh.z.item()]
 
         sp=ds.sphere(c, width)
-
+        
         if slice:
-            p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field)
+            p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
         else:
-            p= yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field)
+            p= yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
+                 center=sp.center, width=width)
 
         if plotsinks:
-            s=sink.Sinks()
             ds.sink = sink.get_sinks(ds)
             for bhnum in ds.sink.ID:
                 ch = ds.sink.loc[ds.sink.ID == bhnum]
-                if (((center[0] - ch.x.item())**2 +
-                    (center[1] - ch.y.item())**2 +
-                    (center[2] - ch.z.item())**2) <
+                if (((c[0] - ch.x.item())**2 +
+                    (c[1] - ch.y.item())**2 +
+                    (c[2] - ch.z.item())**2) <
                     ((sp.radius.in_units('code_length') / 2)**2)):
 
                     p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
@@ -98,11 +117,12 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                                 text=str(ch.ID.item()),
                                 text_args={'color': 'black'})
 
-                if sinkdynamics > 0:
-                        ch=s.sink[bhnum].loc[
-                         (s.sink[bhnum].t>float((ds.current_time-
+                    if sinkdynamics > 0:
+                        ch=s.sink[bhnum]
+                        ch = ch.loc[
+                         (ch.t>float((ds.current_time-
                             ds.arr(sinkdynamics, 'Myr')).in_units('Gyr'))) &
-                         (s.sink[bhnum].t<float((ds.current_time+
+                         (ch.t<float((ds.current_time+
                             ds.arr(sinkdynamics, 'Myr')).in_units('Gyr')))]
                         x=list(ch.x)
                         y=list(ch.y)
@@ -116,9 +136,9 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             for hid in h.ID:
                 ch = h.loc[hid]
                 if ((ch.m > masshalomin) &
-                    (((center[0] - ch.x.item())**2 +
-                      (center[1] - ch.y.item())**2 +
-                      (center[2] - ch.z.item())**2) <
+                    (((c[0] - ch.x.item())**2 +
+                      (c[1] - ch.y.item())**2 +
+                      (c[2] - ch.z.item())**2) <
                      ((dd.radius.in_units('code_length') / 2)**2))):
 
                     p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
@@ -127,11 +147,6 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
                     p.annotate_text([ch.x.item(), ch.y.item(),
                                      ch.z.item()], text=str(int(ch.ID.item())))
-
-
-            
-
-
 
         p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
         p.annotate_scale(corner='upper_right')
@@ -147,6 +162,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         p.set_axes_unit(width[1])
         p.set_width(width)
 
+        print(path)
         p.save(path)
 
     return

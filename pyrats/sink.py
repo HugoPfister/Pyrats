@@ -22,11 +22,6 @@ class Sinks(object):
 
     def __init__(self):
 
-        folder = glob.glob('output*/info*')
-        folder.sort()
-        ds = yt.load(folder[0])
-        self.ds = ds
-
         files = glob.glob('./sinks/BH*')
         files.sort()
 
