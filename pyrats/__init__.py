@@ -1,5 +1,5 @@
 __all__ = ['halos', 'utils', 'trees', 'visualization',
-           'fields', 'physics', 'snaplist', 'sink']
+           'fields', 'physics', 'snaplist', 'sink', 'analysis']
 
 import yt
 from yt.utilities.logger import ytLogger as mylog
@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import os as os
 
-from . import halos, fields, visualization, utils, physics, sink
+from . import halos, fields, visualization, utils, physics, sink, analysis
 
 
 def load(files='', stars=False, dm=False, bh=False, halo=False):
