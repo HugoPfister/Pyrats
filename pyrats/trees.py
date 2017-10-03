@@ -25,8 +25,8 @@ from time import sleep
 from tqdm import tqdm
 import numpy as np
 import yt
-import glob as glob
-import os as os
+from glob import glob
+import os
 
 from . import physics, halos, utils
 
@@ -43,7 +43,7 @@ class Forest(object):
     def __init__(self, snap=None, LoadGal=True):
                  # sim={'Lbox': 10.0, 'h': 0.6711, 'Om': 0.3175, 'Ol': 0.6825}):
 
-        paths = glob.glob('output*/info*')
+        paths = glob('output*/info*')
         paths.sort()
         if snap is None:
             i = -1
@@ -102,7 +102,7 @@ class Forest(object):
         if os.path.exists('./Galaxies') and LoadGal:
             columns = ['pollution', 'mgal', 'sigma', 'dmdt1_1',
                        'dmdt10_1', 'dmdt50_1', 'dmdt1_10', 'dmdt10_10', 'dmdt50_10']
-            GalProps = glob.glob('./Galaxies/GalProp*')
+            GalProps = glob('./Galaxies/GalProp*')
             GalProps.sort()
             tmp = []
             # for ts in range(int(self.trees.halo_ts.max().item())):
@@ -153,7 +153,7 @@ class Forest(object):
                                 for ID in id_main], axis=0, join='inner')
         return main_progs
 
-    def plot_all_trees(self, minmass=-1, maxmass=1e15, radius=1.0,
+    def plot_all_trees(self, minmass=-1, maxmass=1e99, radius=1.0,
                        output=None, loc='./'):
         """
         See plot_halo_tree.
@@ -566,11 +566,8 @@ class Forest(object):
 
     # CONVENIENCE FUNCTIONS
     def _get_timestep_number(self):
-        import glob
-        import os.path
-        halos_results = [os.path.basename(path) for path in
-                         glob.glob(self.folder + 'halos_results.*')]
-        return len(halos_results)
+        l = len(glob(os.path.join(self.folder, 'halos_results.???')))
+        return l
 
     def get_ioutlist(self, inputfile='input_TreeMaker.dat'):
         """Return the number of treebricks files from an input file
