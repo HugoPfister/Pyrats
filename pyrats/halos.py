@@ -36,7 +36,7 @@ class HaloList(object):
         halo = self.halos.loc[hid]
         scale_mpc = float(self.ds.length_unit.in_units('Mpc'))
 
-        halostr = ("Halo {h.ID:.0f} (level {h.level:.0f}):\n"
+        halostr = ("Halo {hid:.0f} (level {h.level:.0f}):\n"
                    "\tContains {h.nbpart:.0f} particles and {h.nbsub:.0f} subhalo(s)\n"
                    "\tCenter:\t\t ({h.x}, {h.y}, {h.z}) box units\n"
                    "\tVelocity:\t ({h.vx}, {h.vy}, {h.vz}) km/s\n"
@@ -45,7 +45,8 @@ class HaloList(object):
                    "\tMvir:\t\t {h.mvir:.3e} Msun\n"
                    "\tRadius:\t\t {h.r:.3e} Mpc ({rcodeunits:.3e} box units)\n"
                    "\tRvir:\t\t {h.rvir:.3e} Mpc ({rvcodeunits:.3e} box units)\n"
-                   "\tTvir:\t\t {h.tvir:.3e} K".format(h=halo,
+                   "\tTvir:\t\t {h.tvir:.3e} K".format(hid=hid,
+                                                       h=halo,
                                                        rcodeunits=halo.r / scale_mpc,
                                                        rvcodeunits=halo.rvir / scale_mpc))
 
