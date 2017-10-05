@@ -188,6 +188,7 @@ class Forest(object):
 
         for ihalo in tqdm(tid):
             self.plot_halo_tree(hid=int(ihalo), radius=radius, pdffile=pdf)
+            plt.close()
         pdf.close()
         plt.close('all')
 
@@ -450,8 +451,9 @@ class Forest(object):
         time = np.array([self.timestep['age'][hts - 1]
                          for hts in main_prog[main_prog.halo_ts !=
                                               self.trees.halo_ts[hid]].halo_ts])
-        self.ax[2].plot(time, np.cumsum(major_mergers)[-1] - np.cumsum(
-            major_mergers), color='b', label='1:1 > mass ratio > 1:4 (sim)')
+        self.ax[2].plot(time, # np.cumsum(major_mergers)[-1] -
+                        np.cumsum(major_mergers),
+                        color='b', label='1:1 > mass ratio > 1:4 (sim)')
 
         self.ax[2].plot(time,
                         [physics.N_merger_until_z(
@@ -463,7 +465,7 @@ class Forest(object):
                         color='b', linestyle='--',
                         label='1:1 > mass ratio > 1:4 (theory)')
 
-        self.ax[2].plot(time, np.cumsum(minor_mergers)[-1] -
+        self.ax[2].plot(time, # np.cumsum(minor_mergers)[-1] -
                         np.cumsum(minor_mergers), color='r',
                         label='1:4 > mass ratio > 1:20 (sim)')
 
