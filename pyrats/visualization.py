@@ -1,7 +1,8 @@
 import yt
 import glob
 from tqdm import tqdm
-import os as os
+import os
+import subprocess
 
 from . import halos, trees, sink
 
@@ -243,15 +244,16 @@ def plot_halo_history(hnum, axis='z',
     t = trees.Forest(LoadGal=False)
     hid = int(t.trees[(t.trees.halo_ts == t.trees.halo_ts.max())
                       & (t.trees.halo_num == hnum)].halo_id)
-    path = folder + '/Halo' + str(hnum)
-    os.system('mkdir ' + path)
+    path = os.path.join(folder, 'Halo%s' % (hnum))
+    if not os.path.exists(path):
+        subprocess.call(['mkdir', path])
     if size is not None:
-        path = path + '/' + str(size[0]) + size[1]
-        os.system('mkdir ' + path)
-    path = path + '/' + field[0] + field[1]
-    os.system('mkdir ' + path)
-    path = path + '/' + 'Axis_' + axis
-    os.system('mkdir ' + path)
+        path = os.path.join(path, '%s%s' % (size[0], size[1]))
+        subprocess.call(['mkdir', path])
+    path = os.path.join(path, '%s%s' % (field[0], field[1]))
+    subprocess.call(['mkdir', path])
+    path = os.path.join(path, 'Axis_%s' % axis)
+    subprocess.call(['mkdir', path])
 
     prog_id = [_ for _ in t.get_main_progenitor(hid).halo_num]
     h = halos.HaloList(ds)

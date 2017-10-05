@@ -88,7 +88,7 @@ class HaloList(object):
         # Get position
         tmp = np.array(self.halos.loc[hid, ['x', 'y', 'z', 'rvir']])
         center = self.ds.arr(tmp[:3], 'code_length')
-        radius = self.ds.arr(tmp[3], 'Mpc')
+        radius = self.ds.arr(tmp[3] * rvir_factor, 'Mpc')
 
         # Get a sphere centered on the halo
         sphere = self.ds.sphere(center, radius)
