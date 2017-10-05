@@ -50,7 +50,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     files = glob.glob('output_*/info*')
     files.sort()
 
-    path = path.join(folder, 'snapshots')
+    path = os.path.join(folder, 'snapshots')
     _mkdir(path)
 
     istart=0
@@ -63,11 +63,11 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         istart=len(files) - len(prog_id)
         files=files[istart:]
 
-        path = path.join(path, 'Halo%s' %hnum)
+        path = os.path.join(path, 'Halo%s' %hnum)
         _mkdir(path)
 
     if bhid != None:
-        path = path.join(path, 'BH%s' % bhid)
+        path = os.path.join(path, 'BH%s' % bhid)
         _mkdir(path)
         s = sink.Sinks()
         tform = s.sink[bhid].t.min()
@@ -80,19 +80,19 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
 
     if slice:
-        path = path.join(path, 'Slice')
+        path = os.path.join(path, 'Slice')
         _mkdir(path)
     else:
-        path = path.join(path, 'Proj')
+        path = os.path.join(path, 'Proj')
         _mkdir(path)
 
     if width != None:
-        path = path.join(path,'%s%s' % (width[0], width[1]))
+        path = os.path.join(path,'%s%s' % (width[0], width[1]))
         _mkdir(path)
 
-    path = path.join(path, '%s%s' % (field[0], field[1]))
+    path = os.path.join(path, '%s%s' % (field[0], field[1]))
     _mkdir(path)
-    path = path.join(path, 'Axis_%s' % axis)
+    path = os.path.join(path, 'Axis_%s' % axis)
     _mkdir(path)
 
     if snap != -1:
