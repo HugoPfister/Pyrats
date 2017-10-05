@@ -86,7 +86,7 @@ class HaloList(object):
             return
 
         # Get position
-        tmp = self.halos[hid][['x', 'y', 'z', 'rvir']]
+        tmp = self.halos.loc[hid, ['x', 'y', 'z', 'rvir']]
         center = tmp[:2]
         radius = tmp[-1] * rvir_factor
 
