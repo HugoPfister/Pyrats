@@ -3,7 +3,7 @@ import glob
 from tqdm import tqdm
 import os as os
 
-from . import halos, trees, sink
+from . import halos, trees, sink, fields
 
 def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         field=('deposit','all_density'), weight_field=('index','ones'), slice=False,
