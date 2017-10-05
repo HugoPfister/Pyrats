@@ -50,7 +50,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     files = glob.glob('output_*/info*')
     files.sort()
 
-    path=folder + '/snapshots'
+    path = path.join(folder, 'snapshots')
     _mkdir(path)
 
     istart=0
@@ -63,42 +63,42 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         istart=len(files) - len(prog_id)
         files=files[istart:]
 
-        path = path + '/Halo' + str(hnum)
+        path = path.join(path, 'Halo%s' %hnum)
         _mkdir(path)
 
     if bhid != None:
-        path = path + '/BH' + str(bhid)
+        path = path.join(path, 'BH%s' % bhid)
         _mkdir(path)
-        s=sink.Sinks()
-        tform=s.sink[bhid].t.min()
-        imin=0
+        s = sink.Sinks()
+        tform = s.sink[bhid].t.min()
+        imin = 0
         for f in files:
-            ds=yt.load(f)
+            ds = yt.load(f)
             if ds.current_time < ds.arr(tform, 'Gyr'):
-                imin+=1
-        files=files[imin:]
+                imin += 1
+        files = files[imin:]
 
 
     if slice:
-        path = path + '/Slice'
+        path = path.join(path, 'Slice')
         _mkdir(path)
     else:
-        path = path + '/Proj'
+        path = path.join(path, 'Proj')
         _mkdir(path)
 
     if width != None:
-        path = path + '/' + str(width[0]) + width[1]
+        path = path.join(path,'%s%s' % (width[0], width[1]))
         _mkdir(path)
 
-    path = path + '/' + field[0] + field[1]
+    path = path.join(path, '%s%s' % (field[0], field[1]))
     _mkdir(path)
-    path = path + '/' + 'Axis_' + axis
+    path = path.join(path, 'Axis_%s' % axis)
     _mkdir(path)
 
     if snap != -1:
-        files=[files[i-istart-1] for i in snap]
+        files = [files[i-istart-1] for i in snap]
         if hnum != None:
-            prog_id=[prog_id[i-istart-1] for i in snap]
+            prog_id = [prog_id[i-istart-1] for i in snap]
 
     for i in tqdm(range(len(files))):
         ds = yt.load(files[i])
@@ -126,7 +126,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             bh = ds.sink.loc[ds.sink.ID == bhid]
             c = [bh.x.item(), bh.y.item(), bh.z.item()]
 
-        sp=ds.sphere(c, width)
+        sp = ds.sphere(c, width)
 
         if slice:
             p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
