@@ -15,9 +15,6 @@ import yt
 from yt.utilities.logger import ytLogger as mylog
 import yt.utilities.fortran_utils as fpu
 from yt.funcs import get_pbar
-from scipy.io import FortranFile as FF
-
-from . import fields, sink
 
 
 class HaloList(object):
@@ -56,6 +53,58 @@ class HaloList(object):
 
         return halostr
 
+    def plot_halo(self, hid, rvir_factor=5, field=('deposit', 'all_density'), folder='./',
+                  weight_field=('index', 'ones'), cmap='viridis', slice=False,
+                  axis='z', **kwargs):
+        '''Plot a given halo.
+
+        Parameters
+        ----------
+        * hid, integer
+            The halo id to plot
+        * rvir_factor, float, default=5
+            Size of the region to plot in unit of Rvir
+
+        * field, tuple
+            The yt field to plot
+        * folder, string
+            The folder where to save the data
+        * weight_field, tuple
+            The field to weight the projection by.
+        * cmap, string
+            The colormap to use
+        * slice, boolean
+            If true, do a slice plot instead of a projection plot
+        * axis, 'x', 'y' or 'z'
+            The axis to project onto
+        '''
+        for k, v in kwargs.items():
+            print('%s: %s not supported' % (k, v))
+
+        if hid not in self.halos.index:
+            mylog.error('%s not found.' % hid)
+            return
+
+        # Get position
+        tmp = self.halos[hid][['x', 'y', 'z', 'rvir']]
+        center = tmp[:2]
+        radius = tmp[-1] * rvir_factor
+
+        # Get a sphere centered on the halo
+        sphere = self.ds.sphere(center, radius)
+
+        # Make a projection plot
+        p = yt.ProjectionPlot(self.ds, axis, field, data_source=sphere,
+                              weight_field=weight_field)
+
+        p.set_cmap(field=field, cmap=cmap)
+        p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
+        p.annotate_scale(corner='upper_right')
+
+        # TODO: annotate halos
+        # TODO: better name
+        p.save(folder)
+
     # Accessors
     def __getitem__(self, item):
         if str(item) in self.halos:
@@ -63,8 +112,8 @@ class HaloList(object):
         else:
             return self.halos.ix[item]
 
-    def __getattr__(self, name):
-        return self.halos.__getattr__(name)  # self.halos[name]
+    # def __getattr__(self, name):
+    #     return self.halos.__getattr__(name)  # self.halos[name]
 
     def __len__(self):
         return len(self.halos)
