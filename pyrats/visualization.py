@@ -7,16 +7,19 @@ import subprocess
 from . import halos, trees, sink
 
 def _mkdir(path):
-    if not os.path.exists(path):
+    try:
         os.mkdir(path)
+    except FileExistsError:
+        pass
 
 def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
-        field=('deposit','all_density'), weight_field=('index','ones'), slice=False,
-        width=(10, 'kpc'), axis_units='kpc', folder='./',
-        cbarunits=None, cbarbounds=None, cmap='viridis',
-        hnum=None, plothalos=False, masshalomin=1e10,
-        bhid=None, plotsinks=False, sinkdynamics=0,
-        snap=-1):
+                   field=('deposit','all_density'),
+                   weight_field=('index','ones'), slice=False,
+                   width=(10, 'kpc'), axis_units='kpc', folder='./',
+                   cbarunits=None, cbarbounds=None, cmap='viridis',
+                   hnum=None, plothalos=False, masshalomin=1e10,
+                   bhid=None, plotsinks=False, plotparticles=False,
+                   sinkdynamics=0, snap=-1):
     """
     Visualization function, by default it is applied to ALL snapshots
 
@@ -42,6 +45,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     bhid : ID of the sink you want to center the images
     plotsinks : show sinks and their ID
     sinkdynamics : draw lines to show BH dynamics between [t-sinkdynamics, t+sinkdynamics], in Myr
+
+    plotparticles: overplot the particles as black dots
 
     snap : list of snapshots you want to show, default ALL (-1)
     """
@@ -100,8 +105,9 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         if hnum != None:
             prog_id = [prog_id[i-istart-1] for i in snap]
 
-    for i in tqdm(range(len(files))):
-        ds = yt.load(files[i])
+    for fn in yt.parallel_objects(files):
+        ds = yt.load(fn)
+        i = files.index(fn)
 
         if 'stars' in field[1]:
             yt.add_particle_filter(
@@ -142,7 +148,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                 if (((c[0] - ch.x.item())**2 +
                     (c[1] - ch.y.item())**2 +
                     (c[2] - ch.z.item())**2) <
-                    ((sp.radius.in_units('code_length') / 2)**2)):
+                    ((width.in_units('code_length') / 2)**2)):
 
                     p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
                                   marker='.', plot_args={'color':
@@ -169,20 +175,30 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
         if plothalos:
             h = halos.HaloList(ds)
-            for hid in h.ID:
-                ch = h.loc[hid]
+            hds = h.halos
+
+            # mask = (((c[0] - hds.x)**2 + (c[1] - hds.y)**2 + (c[2] - hds.z)**2) < \
+            #        (sp.radius.in_units('code_length') / 2)**2) & \
+            #        hds.m > masshalomin
+
+            for hid in hds.index:
+                ch = hds.loc[hid]
+                w = ds.arr(width[0], width[1])
                 if ((ch.m > masshalomin) &
                     (((c[0] - ch.x.item())**2 +
                       (c[1] - ch.y.item())**2 +
                       (c[2] - ch.z.item())**2) <
-                     ((dd.radius.in_units('code_length') / 2)**2))):
+                     ((w.in_units('code_length') / 2)**2))):
 
                     p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
                                       (ch.rvir.item(), 'Mpc'),
                                       circle_args={'color': 'black'})
 
                     p.annotate_text([ch.x.item(), ch.y.item(),
-                                     ch.z.item()], text=str(int(ch.ID.item())))
+                                     ch.z.item()], text='%s' % hid)
+
+        if plotparticles:
+            p.annotate_particles(width)
 
         if axis_units ==None:
             p.annotate_scale(corner='upper_right')
@@ -204,7 +220,6 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             p.set_axes_unit(axis_units)
         p.set_width(width)
 
-        print(path)
         p.save(path)
 
     return
