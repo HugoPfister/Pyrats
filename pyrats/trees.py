@@ -56,7 +56,6 @@ class Forest(object):
 
         ds = yt.load(paths[i])
 
-        sim = ds
         _sim = {}
         _sim['h'] = float(ds.cosmology.hubble_constant)
         _sim['Om'] = ds.omega_matter
@@ -567,9 +566,9 @@ class Forest(object):
     # CONVENIENCE FUNCTIONS
     def _get_timestep_number(self):
         import glob
-        import os.path
-        halos_results = [os.path.basename(path) for path in
-                         glob.glob(self.folder + 'halos_results.*')]
+        from os import path
+        halos_results = [path.basename(p) for p in
+                         glob.glob(path.join(self.folder, 'halos_results.*'))]
         return len(halos_results)
 
     def get_ioutlist(self, inputfile='input_TreeMaker.dat'):
