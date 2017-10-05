@@ -4,7 +4,7 @@ from tqdm import tqdm
 import os
 import subprocess
 
-from . import halos, trees, sink
+from . import halos, trees, sink, fields
 
 def _mkdir(path):
     try:

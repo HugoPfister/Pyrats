@@ -55,6 +55,9 @@ class Sinks(object):
             sink = self.sink[i + 1]
             r = sink.M.max() / sink.M.min()
 
+            if len(sink.t) > 1000:
+                sink=sink.loc[::len(sink.t)//1000]
+
             plt.figure()
             plt.subplot(221)
             if r > 10:
@@ -101,7 +104,14 @@ class Sinks(object):
 
 def get_sinks(ds):
     columns_name = ['ID', 'M', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'age', 'Mdot']
-    sink = pd.read_csv('output' + str(ds)[-6:] + '/sink' + str(ds)[-6:] + '.csv', names=columns_name)
+
+    SinkFile = 'output' + str(ds)[-6:] + '/sink' + str(ds)[-6:] + '.csv'
+
+    if os.path.isfile(SinkFile):
+        sink = pd.read_csv(SinkFile, names=columns_name)
+    else:
+        sink = pd.DataFrame(columns = columns_name)
+
     if len(sink.ID) > 0:
         sink['M'] = sink.M * (ds.arr(1, 'code_mass').in_units('Msun'))
         sink['Mdot'] = sink.Mdot * \
