@@ -10,7 +10,30 @@ def profile(folder='./', center=[0.5,0.5,0.5],
         rbound=[(0.01,'kpc'),(10, 'kpc')], ybound=None, units=None,
         n_bins=64, log=True,
         qtty=[('gas','density'),('deposit','stars_cic'),('deposit','dm_cic')],
-        hnum=None, bhid=None, accumulation=False):
+        weight_field=('index','cell_volume'),
+        hnum=None, bhid=None, accumulation=False, snap=-1):
+    """
+    This routine plot the profile for all snapshots
+
+    folder : location to save plots
+    center : center of the sphere for the plot, useless if hnum/bhid
+
+    rbound : min/max radius for the profile
+    ybound : min/max value to show, in units 'units'
+    units : unit to show the profile
+
+    n_bins : number of bin for the radius
+    log : if True then loglog plot
+
+    qtty : list qqty to be profiled, must have the same dimension
+    weight_field : weight field for the profile
+
+    hnum : center on the center of the halo
+    bhid : center on a particular BH
+
+    accumulation : sum between 0 and r (cumulative profile)
+    snap : list of snapshots to profile
+    """
 
     files = glob.glob('output_*/info*')
     files.sort()
@@ -43,8 +66,21 @@ def profile(folder='./', center=[0.5,0.5,0.5],
                 imin+=1
         files=files[imin:]
 
-    for i in tqdm(range(len(files))):
-        ds = yt.load(files[i])
+    path = path + '/'
+    for f in qtty:
+        path = path + f[0]+f[1]
+    os.system('mkdir ' + path)
+
+
+    if snap != -1:
+        files = [files[i-istart-1] for i in snap]
+        if hnum != None:
+            prog_id = [prog_id[i-istart-1] for i in snap]
+
+    for fn in yt.parallel_objects(files):
+        plt.clf()
+        ds = yt.load(fn)
+        i = files.index(fn)
         
         for field in qtty:
           if 'stars' in field[1]:
@@ -71,7 +107,7 @@ def profile(folder='./', center=[0.5,0.5,0.5],
 
         sp=ds.sphere(c, rbound[1])
         
-        p=yt.create_profile(data_source=sp, bin_fields=('index', 'radius'), weight_field=('index','cell_volume'),
+        p=yt.create_profile(data_source=sp, bin_fields=('index', 'radius'), weight_field=weight_field,
             fields=qtty,
             accumulation=False,
             n_bins=64)
