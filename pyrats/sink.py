@@ -52,6 +52,7 @@ class Sinks(object):
             tmp = np.copy(bhid) - 1
 
         for i in tqdm(tmp):
+            plt.clf()
             sink = self.sink[i + 1]
             r = sink.M.max() / sink.M.min()
 
@@ -98,6 +99,7 @@ class Sinks(object):
             plt.suptitle('BH #{:03}'.format(i + 1))
 
             plt.savefig(loc + '/BH/BH{:03}'.format(i + 1) + '.pdf')
+            plt.clf()
         plt.rcParams.update({'font.size': 10})
         return
 

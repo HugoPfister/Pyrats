@@ -148,7 +148,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                 if (((c[0] - ch.x.item())**2 +
                     (c[1] - ch.y.item())**2 +
                     (c[2] - ch.z.item())**2) <
-                    ((width.in_units('code_length') / 2)**2)):
+                    ((sp.radius.in_units('code_length') / 2)**2)):
 
                     p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
                                   marker='.', plot_args={'color':
@@ -221,5 +221,4 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         p.set_width(width)
 
         p.save(path)
-
     return
