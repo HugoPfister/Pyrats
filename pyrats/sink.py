@@ -80,7 +80,7 @@ class Sinks(object):
             plt.subplot(223)
             plt.semilogy(sink.t, sink.cs, label='c$_s$')
             plt.semilogy(sink.t, sink.dv, label='$\Delta$v')
-            plt.legend(loc='lower left')
+            plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('c$_s$ & $\Delta$v [km s$^{-1}$]')
             if limv is not None:
@@ -90,7 +90,7 @@ class Sinks(object):
             plt.semilogy(sink.t, sink.dME, label='Eddington')
             plt.semilogy(sink.t, sink.dMB, label='Bondi')
             plt.semilogy(sink.t, sink.dM, linestyle='--', label='Simulation')
-            plt.legend(loc='lower right')
+            plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('dM/dt [M$_\\odot$ yr$^{-1}$]')
             if limdM is not None:
@@ -99,6 +99,89 @@ class Sinks(object):
             plt.suptitle('BH #{:03}'.format(i + 1))
 
             plt.savefig(loc + '/BH/BH{:03}'.format(i + 1) + '.pdf')
+            plt.clf()
+        plt.rcParams.update({'font.size': 10})
+        return
+
+    def plot_sink_dynamics(self, bhid=0, loc='./', center=[0.5,0.5,0.5],
+                limrho=None, limv=None, limf=None):
+        """
+        """
+        files=glob.glob('output_*/info*')
+        ds=yt.load(files[0])
+        d=ds.all_data()
+        dx=float(d[('index', 'dx')].min().in_units('pc'))
+
+        plt.rcParams.update({'font.size': 7})
+        os.system('mkdir ' + loc + '/BHdynamics')
+        if bhid == 0:
+            tmp = range(len(self.sink) - 1)
+        else:
+            tmp = np.copy(bhid) - 1
+
+        for i in tqdm(tmp):
+            plt.clf()
+            sink = self.sink[i + 1]
+
+            if len(sink.t) > 1000:
+                sink=sink.loc[::len(sink.t)//1000]
+
+            plt.figure()
+            plt.subplot(221)
+            d=ds.arr(np.copy(np.sqrt((sink.x-center[0])**2+(sink.y-center[1])**2+(sink.z-center[2])**2)), 'code_length')
+            if d.max()/d.min() > 50 :
+                plt.semilogy(sink.t, d.in_units('kpc'))
+            else:    
+                plt.plot(sink.t, d.in_units('kpc'))
+            plt.xlabel('Age of the universe [Gyr]')
+            plt.ylabel('Distance [kpc]')
+
+            plt.subplot(222)
+            plt.semilogy(sink.t, sink.rho, label='Gas')
+            plt.semilogy(sink.t, sink.rho_part, label='DM+stellar density')
+            plt.semilogy(sink.t, sink.rho_part*sink.frac_star, label='Stellar DF density')
+            plt.semilogy(sink.t, sink.rho_part*sink.frac_dm, label='DM DF density')
+            plt.legend(loc='best')
+            plt.xlabel('Age of the universe [Gyr]')
+            plt.ylabel('$\\rho$ [part cc$^{-1}$]')
+            if limrho is not None:
+                plt.ylim(limrho[0], limrho[1])
+
+            plt.subplot(223)
+            plt.semilogy(sink.t, sink.cs, label='c$_s$')
+            plt.semilogy(sink.t, sink.dv, label='$\Delta$v gas')
+            plt.semilogy(sink.t, sink.v_part, label='$\Delta$v DM+stars')
+            plt.legend(loc='best')
+            plt.xlabel('Age of the universe [Gyr]')
+            plt.ylabel('velocity [km s$^{-1}$]')
+            if limv is not None:
+                plt.ylim(limv[0], limv[1])
+
+            plt.subplot(224)
+            if sink.v_part.max() > 3e5 : print('fix PYRATS and compute Lambda w/ max(Rsh, b90)')
+            a_stars=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.frac_star*sink.rho_part*1.67e-24*np.log(dx/(6.67e-8*sink.M*2e33/(sink.v_part*1e5)**2/3.08e18))/(sink.v_part*1e5)**2*(3600*24*365*1e6)/1e5
+            a_dm=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.frac_dm*sink.rho_part*1.67e-24*np.log(dx/(6.67e-8*sink.M*2e33/(sink.v_part*1e5)**2/3.08e18))/(sink.v_part*1e5)**2*(3600*24*365*1e6)/1e5
+            
+            fudge=[]
+            for isink in sink.index:
+                M=sink.loc[isink].dv/sink.loc[isink].cs
+                if M < 0.95 : fudge+=[1/M**2*(0.5*np.log((1+M)/(1-M)) - M)]
+                if ((M >= 0.95) & (M <= 1.007)) : fudge+=[1]
+                if (M > 1.007) : fudge+=[1/M**2*(0.5*np.log(M**2-1) + 3.2)]
+
+            a_gas=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.rho*1.67e-24/(sink.cs*1e5)**2*fudge*(3600*24*365*1e6)/1e5
+            plt.semilogy(sink.t, a_stars, label='DF stars')
+            plt.semilogy(sink.t, a_dm, label='DF DM')
+            plt.semilogy(sink.t, a_gas, label='DF gas')
+            plt.legend(loc='best')
+            plt.xlabel('Age of the universe [Gyr]')
+            plt.ylabel('Force [km/s Myr$^{-1}$]')
+            if limf is not None:
+                plt.ylim(limf[0], limf[1])
+
+
+
+            plt.savefig(loc + '/BHdynamics/BH{:03}'.format(i + 1) + '.pdf')
             plt.clf()
         plt.rcParams.update({'font.size': 10})
         return

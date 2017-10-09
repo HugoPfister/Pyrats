@@ -127,7 +127,7 @@ def profile(folder='./', center=[0.5,0.5,0.5],
             plt.ylim(ybound[0], ybound[1])
 
         plt.xlabel('Radius ['+rbound[0][1]+']')
-        plt.ylabel(qtty[0][1]+' ['+(units if units!=None else p[field].units)+']')
+        plt.ylabel(qtty[0][1]+' ['+(units if units!=None else str(p[qtty[0]].units))+']')
         plt.title('t={:.3f} Gyr'.format(float(ds.current_time.in_units('Gyr'))))
 
         plt.savefig(path+'/profile{:03}'.format(i+1))
