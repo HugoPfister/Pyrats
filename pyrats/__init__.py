@@ -24,19 +24,23 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
 
     if type(files) == int:
         files = 'output_{files:05}/info_{files:05}.txt'.format(files=files)
-
-    ds = yt.load(files)
+    
+    if (stars or dm):
+        ds = yt.load(files, extra_particle_fields=[("particle_age", "d"),("particle_metallicity", "d")])
+    else:
+        ds = yt.load(files)
     ids = int(str(ds).split('_')[1])
 
     if stars:
         mylog.info('Filtering stars')
         yt.add_particle_filter("stars", function=fields.stars,
-                               filtered_type="all", requires=["particle_age"])
+                               filtered_type="io")
         ds.add_particle_filter("stars")
 
     if dm:
         mylog.info('Filtering dark matter')
-        yt.add_particle_filter("dm", function=fields.dm, filtered_type="all")
+        yt.add_particle_filter("dm", function=fields.dm,
+                                filtered_type="io")
         ds.add_particle_filter("dm")
 
     if bh:
