@@ -106,17 +106,20 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             prog_id = [prog_id[i-istart-1] for i in snap]
 
     for fn in yt.parallel_objects(files):
-        ds = yt.load(fn)
+        if (('stars' in field[1]) or ('dm' in field[1])):
+            ds = yt.load(fn, extra_particle_fields=[("particle_age", "d"),("particle_metallicity", "d")])
+        else:
+            ds = yt.load(fn)
         i = files.index(fn)
 
         if 'stars' in field[1]:
             yt.add_particle_filter(
-                "stars", function=fields.stars, filtered_type="all",
+                "stars", function=fields.stars, filtered_type="io",
                 requires=["particle_age"])
             ds.add_particle_filter("stars")
         if 'dm' in field[1]:
             yt.add_particle_filter(
-                "dm", function=fields.dm, filtered_type="all")
+                "dm", function=fields.dm, filtered_type="io")
             ds.add_particle_filter("dm")
 
         c = center

@@ -28,7 +28,7 @@ def dm(pfilter, data):
          filter= (data['io','particle_identifier'] >0)
     else:
      #if data['particle_age'] != None:
-         filter = (data['io','particle_age'] == 0 ) & (data['io','particle_identifier'] > 0)
+         filter = ((data['io','particle_age'] == 0 ) & (data['io','particle_identifier'] > 0))
      #else:
      #    filter= (data['io','particle_identifier'] >0)
     return filter

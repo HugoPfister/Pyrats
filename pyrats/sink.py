@@ -15,18 +15,47 @@ import yt
 import glob as glob
 import os as os
 from yt.utilities.lib.cosmology_time import get_ramses_ages
+from scipy.interpolate import interp1d
+
 class Sinks(object):
     """
     Read the sinks outputs from RAMSES and put them in a PandaFrame
     """
 
-    def __init__(self):
+    def __init__(self, ExtraProps=False):
 
         files = glob.glob('./sinks/BH*')
         files.sort()
 
         self.sink = []
-        self.sink += [pd.read_csv(f) for f in files]
+        j=0
+
+
+        if ExtraProps:
+              snaps=glob.glob('output_*/info*')
+              ds=yt.load(snaps[0])
+              d=ds.all_data()
+              dx=float(d[('index', 'dx')].min().in_units('pc'))
+
+
+        for f in files:
+            self.sink += [pd.read_csv(f)]
+
+            if ExtraProps:
+                if self.sink[j].v_part.max() > 3e5 : print('fix PYRATS and compute Lambda w/ max(Rsh, b90)')
+                self.sink[j]['a_star']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_star*self.sink[j].rho_stars*1.67e-24*np.log(dx/(6.67e-8*self.sink[j].M*2e33/(self.sink[j].v_part*1e5)**2/3.08e18))/(self.sink[j].v_part*1e5)**2*(3600*24*365*1e6)/1e5
+                self.sink[j]['a_dm']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_dm*self.sink[j].rho_dm*1.67e-24*np.log(dx/(6.67e-8*self.sink[j].M*2e33/(self.sink[j].v_part*1e5)**2/3.08e18))/(self.sink[j].v_part*1e5)**2*(3600*24*365*1e6)/1e5
+            
+                fudge=[]
+                for isink in self.sink[j].index:
+                    M=max(self.sink[j].loc[isink].dv/max(self.sink[j].loc[isink].cs,1e-20),1e-20)
+                    if M < 0.95 : fudge+=[1/M**2*(0.5*np.log((1+M)/(1-M)) - M)]
+                    if ((M >= 0.95) & (M <= 1.007)) : fudge+=[1]
+                    if (M > 1.007) : fudge+=[1/M**2*(0.5*np.log(M**2-1) + 3.2)]
+
+                self.sink[j]['a_gas']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].rho*1.67e-24/(self.sink[j].cs*1e5)**2*fudge*(3600*24*365*1e6)/1e5
+                j+=1
+
 
         return
 
@@ -79,7 +108,7 @@ class Sinks(object):
 
             plt.subplot(223)
             plt.semilogy(sink.t, sink.cs, label='c$_s$')
-            plt.semilogy(sink.t, sink.dv, label='$\Delta$v')
+            plt.semilogy(sink.t, sink.dv, label='$\Delta$v', alpha=0.9)
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('c$_s$ & $\Delta$v [km s$^{-1}$]')
@@ -87,9 +116,9 @@ class Sinks(object):
                 plt.ylim(limv[0], limv[1])
 
             plt.subplot(224)
-            plt.semilogy(sink.t, sink.dME, label='Eddington')
             plt.semilogy(sink.t, sink.dMB, label='Bondi')
-            plt.semilogy(sink.t, sink.dM, linestyle='--', label='Simulation')
+            plt.semilogy(sink.t, sink.dM, linestyle='--', label='Simulation', alpha=0.9)
+            plt.semilogy(sink.t, sink.dME, label='Eddington')
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('dM/dt [M$_\\odot$ yr$^{-1}$]')
@@ -104,8 +133,17 @@ class Sinks(object):
         return
 
     def plot_sink_dynamics(self, bhid=0, loc='./', center=[0.5,0.5,0.5],
-                limrho=None, limv=None, limf=None):
+                limrho=None, limv=None, limf=None, logDist=True):
         """
+        Show on a same PDF distance, surrounding gas/stars/dm density, relative velocity and magnitude
+        of the drag force
+        
+        bhid : list of BHs to analyse
+        loc : folder where to save the pdf
+        center : location of the center to compute the distance, can be 'GalCen' if file exists
+        limrho v f : y limits for the plot
+        logDist : force log plot or not for the distance
+
         """
         files=glob.glob('output_*/info*')
         ds=yt.load(files[0])
@@ -128,8 +166,19 @@ class Sinks(object):
 
             plt.figure()
             plt.subplot(221)
+            if center == 'GalCen':
+                center=[0,0,0]
+                Gal=pd.read_csv('GalCenter.csv')
+                x = interp1d(Gal.t, Gal.cx, kind='cubic')
+                y = interp1d(Gal.t, Gal.cy, kind='cubic')
+                z = interp1d(Gal.t, Gal.cz, kind='cubic')
+                sink=sink.loc[(sink.t > Gal.t.min()) & (sink.t < Gal.t.max())]
+                center[0]=x(sink.t)
+                center[1]=y(sink.t)
+                center[2]=z(sink.t)
+
             d=ds.arr(np.copy(np.sqrt((sink.x-center[0])**2+(sink.y-center[1])**2+(sink.z-center[2])**2)), 'code_length')
-            if d.max()/d.min() > 50 :
+            if ((d.max()/d.min() > 50) & logDist) :
                 plt.semilogy(sink.t, d.in_units('kpc'))
             else:    
                 plt.plot(sink.t, d.in_units('kpc'))
@@ -138,9 +187,10 @@ class Sinks(object):
 
             plt.subplot(222)
             plt.semilogy(sink.t, sink.rho, label='Gas')
-            plt.semilogy(sink.t, sink.rho_part, label='DM+stellar density')
-            plt.semilogy(sink.t, sink.rho_part*sink.frac_star, label='Stellar DF density')
-            plt.semilogy(sink.t, sink.rho_part*sink.frac_dm, label='DM DF density')
+            plt.semilogy(sink.t, sink.rho_stars, label='Stellar density', color='g')
+            plt.semilogy(sink.t, sink.rho_dm, label='DM density', color='orange')
+            plt.semilogy(sink.t, sink.rho_stars*sink.frac_star, color='g', linestyle=':', alpha=0.7)
+            plt.semilogy(sink.t, sink.rho_dm*sink.frac_dm, linestyle=':', color='orange', alpha=0.7)
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('$\\rho$ [part cc$^{-1}$]')
@@ -149,8 +199,8 @@ class Sinks(object):
 
             plt.subplot(223)
             plt.semilogy(sink.t, sink.cs, label='c$_s$')
-            plt.semilogy(sink.t, sink.dv, label='$\Delta$v gas')
-            plt.semilogy(sink.t, sink.v_part, label='$\Delta$v DM+stars')
+            plt.semilogy(sink.t, sink.dv, label='$\Delta$v gas', alpha=0.8)
+            plt.semilogy(sink.t, sink.v_part, label='$\Delta$v DM+stars', alpha=0.8)
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('velocity [km s$^{-1}$]')
@@ -159,23 +209,23 @@ class Sinks(object):
 
             plt.subplot(224)
             if sink.v_part.max() > 3e5 : print('fix PYRATS and compute Lambda w/ max(Rsh, b90)')
-            a_stars=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.frac_star*sink.rho_part*1.67e-24*np.log(dx/(6.67e-8*sink.M*2e33/(sink.v_part*1e5)**2/3.08e18))/(sink.v_part*1e5)**2*(3600*24*365*1e6)/1e5
-            a_dm=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.frac_dm*sink.rho_part*1.67e-24*np.log(dx/(6.67e-8*sink.M*2e33/(sink.v_part*1e5)**2/3.08e18))/(sink.v_part*1e5)**2*(3600*24*365*1e6)/1e5
+            a_stars=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.frac_star*sink.rho_stars*1.67e-24*np.log(dx/(6.67e-8*sink.M*2e33/(sink.v_part*1e5)**2/3.08e18))/(sink.v_part*1e5)**2*(3600*24*365*1e6)/1e5
+            a_dm=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.frac_dm*sink.rho_dm*1.67e-24*np.log(dx/(6.67e-8*sink.M*2e33/(sink.v_part*1e5)**2/3.08e18))/(sink.v_part*1e5)**2*(3600*24*365*1e6)/1e5
             
             fudge=[]
             for isink in sink.index:
-                M=sink.loc[isink].dv/sink.loc[isink].cs
+                M=max(sink.loc[isink].dv/max(sink.loc[isink].cs,1e-20),1e-20)
                 if M < 0.95 : fudge+=[1/M**2*(0.5*np.log((1+M)/(1-M)) - M)]
                 if ((M >= 0.95) & (M <= 1.007)) : fudge+=[1]
                 if (M > 1.007) : fudge+=[1/M**2*(0.5*np.log(M**2-1) + 3.2)]
 
             a_gas=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.rho*1.67e-24/(sink.cs*1e5)**2*fudge*(3600*24*365*1e6)/1e5
-            plt.semilogy(sink.t, a_stars, label='DF stars')
-            plt.semilogy(sink.t, a_dm, label='DF DM')
             plt.semilogy(sink.t, a_gas, label='DF gas')
+            plt.semilogy(sink.t, a_stars, label='DF stars', alpha=0.8)
+            plt.semilogy(sink.t, a_dm, label='DF DM', alpha=0.8)
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
-            plt.ylabel('Force [km/s Myr$^{-1}$]')
+            plt.ylabel('Acceleration [km/s Myr$^{-1}$]')
             if limf is not None:
                 plt.ylim(limf[0], limf[1])
 
