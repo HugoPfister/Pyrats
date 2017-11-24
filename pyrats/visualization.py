@@ -26,7 +26,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     axis : the projection axis
     center : center (in code_length units) of the region to show, useless if hnum/bhid
 
-    width : width of the window, default (10, 'kpc')
+    width : width of the window, default (10, 'kpc'), can be 'Rvir'
+        in that case the size is set to the virial radius of each snapshots
     axis_units : units for the x/y axis, if None then no axis
     folder : folder to save the images
 
@@ -76,13 +77,20 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         _mkdir(path)
         s = sink.Sinks()
         tform = s.sink[bhid].t.min()
+        tmerge = s.sink[bhid].t.max()
         imin = 0
+        imax = 0
         for f in files:
             ds = yt.load(f)
+            print(ds.current_time.in_units('Gyr'))
             if ds.current_time < ds.arr(tform, 'Gyr'):
                 imin += 1
-        files = files[imin:]
-
+            if ds.current_time > ds.arr(tmerge, 'Gyr'):
+                imax -= 1
+        if imax == 0:
+            files = files[imin:]
+        else:
+            files = files[imin:imax]
 
     if slice:
         path = os.path.join(path, 'Slice')
@@ -92,7 +100,10 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         _mkdir(path)
 
     if width != None:
-        path = os.path.join(path,'%s%s' % (width[0], width[1]))
+        if width == 'Rvir':
+            path = os.path.join(path,'rvir')
+        else:
+            path = os.path.join(path,'%s%s' % (width[0], width[1]))
         _mkdir(path)
 
     path = os.path.join(path, '%s%s' % (field[0], field[1]))
@@ -104,7 +115,11 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         files = [files[i-istart-1] for i in snap]
         if hnum != None:
             prog_id = [prog_id[i-istart-1] for i in snap]
+    
+    if plotsinks:
+            s=sink.Sinks()
 
+    width_input = width
     for fn in yt.parallel_objects(files):
         if (('stars' in field[1]) or ('dm' in field[1])):
             ds = yt.load(fn, extra_particle_fields=[("particle_age", "d"),("particle_metallicity", "d")])
@@ -129,6 +144,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             hid = prog_id[i]
             hh = h.halos.loc[hid]
             c = [h.halos['x'][hid], h.halos['y'][hid], h.halos['z'][hid]]
+            if width_input == 'Rvir':
+                width = (h.halos['rvir'][hid]*1000, 'kpc')
 
         if bhid != None:
             ds.sink = sink.get_sinks(ds)
@@ -145,7 +162,6 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
         if plotsinks:
             ds.sink = sink.get_sinks(ds)
-            s=sink.Sinks()
             for bhnum in ds.sink.ID:
                 ch = ds.sink.loc[ds.sink.ID == bhnum]
                 if (((c[0] - ch.x.item())**2 +
@@ -203,14 +219,16 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         if plotparticles:
             p.annotate_particles(width)
 
-        if axis_units ==None:
+        if axis_units == None:
             p.annotate_scale(corner='upper_right')
         else:
             p.annotate_scale(corner='upper_right', unit=axis_units)
         p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
 
         p.set_cmap(field=field, cmap=cmap)
-        if cbarunits !=None:
+        if cbarunits == None:
+            p.hide_colorbar()
+        else:
             p.set_unit(field=field, new_unit=cbarunits)
         if cbarbounds !=None:
             p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
