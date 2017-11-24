@@ -98,14 +98,14 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
             d = np.sqrt(((ds.halo.halos.x - x)**2 + (ds.halo.halos.y - y)
                          ** 2 + (ds.halo.halos.z - z)**2)[hid])
             if d * L < 0.05 * ds.halo.halos.rvir[hid]:
-                oldID = int(ds.halo.loc[ds.halo.halos.index == hid, 'bhid'])
+                oldID = int(ds.halo.halos.loc[ds.halo.halos.index == hid, 'bhid'])
                 if oldID == -1:
-                    ds.halo.loc[ds.halo.halos.index == hid, 'bhid'] = bhid
+                    ds.halo.halos.loc[ds.halo.halos.index == hid, 'bhid'] = bhid
                 else:
-                    bhold = ds.sink[ds.sink.ID == oldID]
+                    bhold = ds.sink.loc[ds.sink.ID == oldID]
                     oldm = float(bhold.M)
                     if float(bh.M) > oldm:
-                        ds.halo.loc[ds.halo.halos.index == hid, 'bhid'] = bhid
+                        ds.halo.halos.loc[ds.halo.halos.index == hid, 'bhid'] = bhid
 
                 ds.sink.loc[ds.sink.ID == bhid, 'hid'] = float(
                     ds.halo.halos.index[hid-1])

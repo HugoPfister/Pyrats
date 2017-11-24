@@ -3,6 +3,10 @@ import glob
 from tqdm import tqdm
 import os as os
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
+import pandas as pd
+import numpy as np
+
 
 from . import halos, trees, sink, fields
 
@@ -141,3 +145,67 @@ def profile(folder='./', center=[0.5,0.5,0.5],
         plt.savefig(path+'/profile{:03}'.format(i+1))
         plt.clf()
     return
+
+def dist_sink_to_halo(IDsink, IDhalos):
+    """
+    Use the tree from HaloFinder/TreeMaker and the sink files to
+    compute the distance, as a function of time, between sinks and halos
+    work also for non Cosmo sims, use GalFinder.py (explanation in GalFinder.py)
+
+    CARE : ALL IDs are set for the last output available
+    IDsink = list of id sinks
+    IDhalos = list of halos ids (given by HaloFinder), use -1 for GalFinder output
+
+    The first element of IDsink is associated with the first of hid etc...
+    """
+    if np.copy(IDhalos).max() > 0:
+        tree = trees.Forest()
+
+    files = glob.glob('output*/info*')
+    files.sort()
+    ds=yt.load(files[-1])    
+    Lbox = float(ds.length_unit.in_units('kpc')*(1+ds.current_redshift))
+    
+    files = glob.glob('./sinks/BH*')
+    files.sort()
+
+    d=[]; t=[]    
+    if len(IDsink) != len(IDhalos):
+        print('Please put the same number of sinks and halos')
+        return
+
+    for i in range(len(IDsink)):
+        bh = pd.read_csv(files[IDsink[i]])
+        bhid = IDsink[i]
+        hid = IDhalos[i]
+
+        if hid == -1:
+                Gal=pd.read_csv('GalCenter.csv')
+                xh = interp1d(Gal.t, (Gal.cx-0.5)*Lbox, kind='cubic')
+                yh = interp1d(Gal.t, (Gal.cy-0.5)*Lbox, kind='cubic')
+                zh = interp1d(Gal.t, (Gal.cz-0.5)*Lbox, kind='cubic')
+                tmin = max(Gal.t.min(), bh.t.min())
+                tmax = min(Gal.t.max(), bh.t.max())
+
+        if hid > 0:
+            prog = tree.get_main_progenitor(int(tree.trees.loc[(tree.trees.halo_num == hid) & (tree.trees.halo_ts == tree.trees.halo_ts.max())].halo_id))
+        
+            xh = interp1d(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()], prog.x[::-1]*1000, kind='cubic')
+            yh = interp1d(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()], prog.y[::-1]*1000, kind='cubic')
+            zh = interp1d(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()], prog.z[::-1]*1000, kind='cubic')
+
+            tmin=max(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()].min(),bh.t.min())
+            tmax=min(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()].max(),bh.t.max())
+            
+        bh = bh.loc[(bh.t > tmin) & (bh.t < tmax)]
+        dx=xh(bh.t)-(bh.x-0.5)*Lbox 
+        dy=yh(bh.t)-(bh.y-0.5)*Lbox 
+        dz=zh(bh.t)-(bh.z-0.5)*Lbox 
+        
+        z=np.copy([1]*len(bh.t))
+        if ds.cosmological_simulation == 1:
+            z=ds.cosmology.z_from_t(ds.arr(list(bh.t), 'Gyr'))
+        d+=[np.sqrt(dx**2+dy**2+dz**2)/z]
+        t+=[bh.t]
+
+    return d, t

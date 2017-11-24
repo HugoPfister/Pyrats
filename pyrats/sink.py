@@ -17,45 +17,60 @@ import os as os
 from yt.utilities.lib.cosmology_time import get_ramses_ages
 from scipy.interpolate import interp1d
 
+from . import analysis 
 class Sinks(object):
     """
     Read the sinks outputs from RAMSES and put them in a PandaFrame
+    The sink output has to be computed with BH.py (explanation of this
+    works is given in BH.py)
     """
 
-    def __init__(self, ExtraProps=False):
+    def __init__(self, ExtraProps=False, center='none'):
 
         files = glob.glob('./sinks/BH*')
         files.sort()
 
-        self.sink = []
-        j=0
+        snaps=glob.glob('output_*/info*')
+        ds=yt.load(snaps[0])
+        d=ds.all_data()
+        dx=float(ds.length_unit.in_units('pc')/2**ds.max_level*(1+ds.current_redshift))
 
-
-        if ExtraProps:
-              snaps=glob.glob('output_*/info*')
-              ds=yt.load(snaps[0])
-              d=ds.all_data()
-              dx=float(d[('index', 'dx')].min().in_units('pc'))
-
-
-        for f in files:
+        self.sink = [pd.read_csv(files[0])]
+        j=1
+        for f in tqdm(files[1:]):
             self.sink += [pd.read_csv(f)]
 
-            if ExtraProps:
-                if self.sink[j].v_part.max() > 3e5 : print('fix PYRATS and compute Lambda w/ max(Rsh, b90)')
-                self.sink[j]['a_star']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_star*self.sink[j].rho_stars*1.67e-24*np.log(dx/(6.67e-8*self.sink[j].M*2e33/(self.sink[j].v_part*1e5)**2/3.08e18))/(self.sink[j].v_part*1e5)**2*(3600*24*365*1e6)/1e5
-                self.sink[j]['a_dm']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_dm*self.sink[j].rho_dm*1.67e-24*np.log(dx/(6.67e-8*self.sink[j].M*2e33/(self.sink[j].v_part*1e5)**2/3.08e18))/(self.sink[j].v_part*1e5)**2*(3600*24*365*1e6)/1e5
-            
-                fudge=[]
-                for isink in self.sink[j].index:
-                    M=max(self.sink[j].loc[isink].dv/max(self.sink[j].loc[isink].cs,1e-20),1e-20)
-                    if M < 0.95 : fudge+=[1/M**2*(0.5*np.log((1+M)/(1-M)) - M)]
-                    if ((M >= 0.95) & (M <= 1.007)) : fudge+=[1]
-                    if (M > 1.007) : fudge+=[1/M**2*(0.5*np.log(M**2-1) + 3.2)]
+            if 'fact_stars' in self.sink[j].columns:
+                self.sink[j]['v_part'] = np.sqrt(self.sink[j].vx_part**2+self.sink[j].vy_part**2+self.sink[j].vz_part**2)
+                self.sink[j]['vsink_rel'] = np.sqrt((self.sink[j].vx_part-self.sink[j].vx)**2+(self.sink[j].vy_part-self.sink[j].vy)**2+(self.sink[j].vz_part-self.sink[j].vz)**2)
+                self.sink[j]['rinf'] = (self.sink[j].M/1e7)/(self.sink[j].vsink_rel/200)**2
+                CoulombLog = np.maximum(np.zeros(len(self.sink[j].t)), np.log(4*dx/self.sink[j].rinf))
+                self.sink[j]['a_stars_slow']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_stars*self.sink[j].rho_stars*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
+                self.sink[j]['a_dm_slow']  =4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_dm*self.sink[j].rho_dm*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
+                CoulombLog = np.minimum(np.zeros(len(self.sink[j].rinf)), self.sink[j].rinf - 4*dx) / (self.sink[j].rinf - 4*dx)  
+                self.sink[j]['a_stars_fast']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].fact_stars*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
+                self.sink[j]['a_dm_fast']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].fact_dm*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
+                self.sink[j]['a_dm'] = self.sink[j]['a_dm_slow']+self.sink[j]['a_dm_fast']
+                self.sink[j]['a_stars'] = self.sink[j]['a_stars_slow']+self.sink[j]['a_stars_fast']
 
-                self.sink[j]['a_gas']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].rho*1.67e-24/(self.sink[j].cs*1e5)**2*fudge*(3600*24*365*1e6)/1e5
-                j+=1
+            if 'dv_x' in self.sink[j].columns:
+                self.sink[j]['vsink_rel'] = np.sqrt(self.sink[j].vx_part**2+self.sink[j].vy_part**2+self.sink[j].vz_part**2)
+                self.sink[j]['dv_drag'] = np.sqrt(self.sink[j].dv_x**2+self.sink[j].dv_y**2+self.sink[j].dv_z**2)
+                self.sink[j]['rinf'] = (self.sink[j].M/1e7)/(self.sink[j].vsink_rel/200)**2
+                CoulombLog = np.maximum(np.zeros(len(self.sink[j].t)), np.log(4*dx/self.sink[j].rinf))
+                self.sink[j]['a_stars_slow']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_stars*self.sink[j].rho_stars*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
+                self.sink[j]['a_dm_slow']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_dm*self.sink[j].rho_dm*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
 
+            M=self.sink[j].dv/self.sink[j].cs
+            self.sink[j]['rinf_gas'] = (self.sink[j].M/1e7)/((self.sink[j].dv**2+self.sink[j].cs**2)/200**2)
+            CoulombLog = np.minimum(np.zeros(len(self.sink[j].rinf_gas)), self.sink[j].rinf_gas - 4*dx) / (self.sink[j].rinf_gas - 4*dx)
+            fudge = M
+            fudge.loc[M < 0.95] = 1/M**2*(0.5*np.log((1+M)/(1-M)) - M)
+            fudge.loc[(M >= 0.95) & (M <= 1.007)] = 1
+            fudge.loc[M > 1.007] = 1/M**2*(0.5*np.log(M**2-1) + 3.2)
+            self.sink[j]['a_gas']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].rho*1.67e-24/(self.sink[j].cs*1e5)**2*fudge*(3600*24*365*1e6)/1e5*CoulombLog
+       
+            j+=1
 
         return
 
@@ -128,19 +143,19 @@ class Sinks(object):
             plt.suptitle('BH #{:03}'.format(i + 1))
 
             plt.savefig(loc + '/BH/BH{:03}'.format(i + 1) + '.pdf')
-            plt.clf()
+            plt.close('all')
         plt.rcParams.update({'font.size': 10})
         return
 
-    def plot_sink_dynamics(self, bhid=0, loc='./', center=[0.5,0.5,0.5],
+    def plot_sink_dynamics(self, bhid=[0], loc='./', IDhalos=[0],
                 limrho=None, limv=None, limf=None, logDist=True):
         """
         Show on a same PDF distance, surrounding gas/stars/dm density, relative velocity and magnitude
         of the drag force
         
-        bhid : list of BHs to analyse
+        bhid : list of BHs to analyse, [0] is all
         loc : folder where to save the pdf
-        center : location of the center to compute the distance, can be 'GalCen' if file exists
+        IDhalos : list of halos to give to pyrats.analysis.dist_sink_to_halo
         limrho v f : y limits for the plot
         logDist : force log plot or not for the distance
 
@@ -148,16 +163,25 @@ class Sinks(object):
         files=glob.glob('output_*/info*')
         ds=yt.load(files[0])
         d=ds.all_data()
-        dx=float(d[('index', 'dx')].min().in_units('pc'))
+        dx=float(ds.length_unit.in_units('pc')/2**ds.max_level*(1+ds.current_redshift))
 
         plt.rcParams.update({'font.size': 7})
         os.system('mkdir ' + loc + '/BHdynamics')
-        if bhid == 0:
+        if bhid == [0]:
             tmp = range(len(self.sink) - 1)
         else:
             tmp = np.copy(bhid) - 1
+        
+        if IDhalos == [0]:
+            if ds.cosmological_simulation:
+                print('Please fill a halo for each BHs you have put')
+                return 
+            else:
+                IDhalos=len(bhid)*[-1]
 
+        j=-1
         for i in tqdm(tmp):
+            j +=1
             plt.clf()
             sink = self.sink[i + 1]
 
@@ -166,31 +190,25 @@ class Sinks(object):
 
             plt.figure()
             plt.subplot(221)
-            if center == 'GalCen':
-                center=[0,0,0]
-                Gal=pd.read_csv('GalCenter.csv')
-                x = interp1d(Gal.t, Gal.cx, kind='cubic')
-                y = interp1d(Gal.t, Gal.cy, kind='cubic')
-                z = interp1d(Gal.t, Gal.cz, kind='cubic')
-                sink=sink.loc[(sink.t > Gal.t.min()) & (sink.t < Gal.t.max())]
-                center[0]=x(sink.t)
-                center[1]=y(sink.t)
-                center[2]=z(sink.t)
 
-            d=ds.arr(np.copy(np.sqrt((sink.x-center[0])**2+(sink.y-center[1])**2+(sink.z-center[2])**2)), 'code_length')
-            if ((d.max()/d.min() > 50) & logDist) :
-                plt.semilogy(sink.t, d.in_units('kpc'))
+            d, t=analysis.dist_sink_to_halo(IDsink=[i+1], IDhalos=[IDhalos[j]])
+            if len(t[0]) > 1000:
+                d=d[0][::len(t[0])//1000]
+                t=t[0][::len(t[0])//1000]
+            if (logDist):
+                plt.semilogy(t, d)
             else:    
-                plt.plot(sink.t, d.in_units('kpc'))
+                plt.plot(t, d)
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('Distance [kpc]')
 
             plt.subplot(222)
             plt.semilogy(sink.t, sink.rho, label='Gas')
-            plt.semilogy(sink.t, sink.rho_stars, label='Stellar density', color='g')
-            plt.semilogy(sink.t, sink.rho_dm, label='DM density', color='orange')
-            plt.semilogy(sink.t, sink.rho_stars*sink.frac_star, color='g', linestyle=':', alpha=0.7)
-            plt.semilogy(sink.t, sink.rho_dm*sink.frac_dm, linestyle=':', color='orange', alpha=0.7)
+            if 'rho_stars' in sink.columns:
+                plt.semilogy(sink.t, sink.rho_stars, label='Stellar density', color='g')
+                plt.semilogy(sink.t, sink.rho_dm, label='DM density', color='orange')
+                plt.semilogy(sink.t, sink.rho_stars*sink.frac_stars, color='g', linestyle=':', alpha=0.7)
+                plt.semilogy(sink.t, sink.rho_dm*sink.frac_dm, linestyle=':', color='orange', alpha=0.7)
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('$\\rho$ [part cc$^{-1}$]')
@@ -198,9 +216,11 @@ class Sinks(object):
                 plt.ylim(limrho[0], limrho[1])
 
             plt.subplot(223)
-            plt.semilogy(sink.t, sink.cs, label='c$_s$')
             plt.semilogy(sink.t, sink.dv, label='$\Delta$v gas', alpha=0.8)
-            plt.semilogy(sink.t, sink.v_part, label='$\Delta$v DM+stars', alpha=0.8)
+            plt.semilogy(sink.t, sink.cs, label='c$_s$', color='red')
+            if 'vsink_rel' in sink.columns:
+                plt.semilogy(sink.t, sink.vsink_rel, label='$\Delta$v DM+stars', alpha=0.8, color='orange')
+            
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('velocity [km s$^{-1}$]')
@@ -208,24 +228,18 @@ class Sinks(object):
                 plt.ylim(limv[0], limv[1])
 
             plt.subplot(224)
-            if sink.v_part.max() > 3e5 : print('fix PYRATS and compute Lambda w/ max(Rsh, b90)')
-            a_stars=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.frac_star*sink.rho_stars*1.67e-24*np.log(dx/(6.67e-8*sink.M*2e33/(sink.v_part*1e5)**2/3.08e18))/(sink.v_part*1e5)**2*(3600*24*365*1e6)/1e5
-            a_dm=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.frac_dm*sink.rho_dm*1.67e-24*np.log(dx/(6.67e-8*sink.M*2e33/(sink.v_part*1e5)**2/3.08e18))/(sink.v_part*1e5)**2*(3600*24*365*1e6)/1e5
-            
-            fudge=[]
-            for isink in sink.index:
-                M=max(sink.loc[isink].dv/max(sink.loc[isink].cs,1e-20),1e-20)
-                if M < 0.95 : fudge+=[1/M**2*(0.5*np.log((1+M)/(1-M)) - M)]
-                if ((M >= 0.95) & (M <= 1.007)) : fudge+=[1]
-                if (M > 1.007) : fudge+=[1/M**2*(0.5*np.log(M**2-1) + 3.2)]
 
-            a_gas=4*np.pi*(6.67e-8)**2*sink.M*2e33*sink.rho*1.67e-24/(sink.cs*1e5)**2*fudge*(3600*24*365*1e6)/1e5
-            plt.semilogy(sink.t, a_gas, label='DF gas')
-            plt.semilogy(sink.t, a_stars, label='DF stars', alpha=0.8)
-            plt.semilogy(sink.t, a_dm, label='DF DM', alpha=0.8)
+            plt.semilogy(sink.t, sink.a_gas, label='Gas')
+            if 'vsink_rel' in sink.columns:    
+                plt.semilogy(sink.t, sink.a_stars_slow, label='Stars slow', alpha=0.8, color='green')
+                plt.semilogy(sink.t, sink.a_dm_slow, alpha=0.8, color='orange', label='DM slow')
+            if 'a_stars_fast' in sink.columns:
+                plt.semilogy(sink.t, np.copy(sink.a_stars_fast), linestyle =':', color='green', alpha=1)
+                plt.semilogy(sink.t, np.copy(sink.a_dm_fast), alpha=1, linestyle=':', color='orange')
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('Acceleration [km/s Myr$^{-1}$]')
+            plt.suptitle('BH #{:03}'.format(i+1)+' Halo #{:04}'.format(IDhalos[j]))
             if limf is not None:
                 plt.ylim(limf[0], limf[1])
 
@@ -233,6 +247,7 @@ class Sinks(object):
 
             plt.savefig(loc + '/BHdynamics/BH{:03}'.format(i + 1) + '.pdf')
             plt.clf()
+            plt.close('all')
         plt.rcParams.update({'font.size': 10})
         return
 
