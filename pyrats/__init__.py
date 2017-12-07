@@ -106,7 +106,8 @@ def load(files='', stars=False, dm=False, bh=False, halo=False):
                     oldm = float(bhold.M)
                     if float(bh.M) > oldm:
                         ds.halo.halos.loc[ds.halo.halos.index == hid, 'bhid'] = bhid
-
+            
+            if d * L < 0.1 * ds.halo.halos.rvir[hid]:
                 ds.sink.loc[ds.sink.ID == bhid, 'hid'] = float(
                     ds.halo.halos.index[hid-1])
 
