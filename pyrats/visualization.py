@@ -3,6 +3,7 @@ import glob
 from tqdm import tqdm
 import os
 import subprocess
+import matplotlib.pyplot as plt
 
 from . import halos, trees, sink, fields
 
@@ -19,7 +20,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    cbarunits=None, cbarbounds=None, cmap='viridis',
                    hnum=None, plothalos=False, masshalomin=1e10,
                    bhid=None, plotsinks=False, plotparticles=False,
-                   sinkdynamics=0, snap=-1):
+                   sinkdynamics=0, snap=-1, LogScale=True):
     """
     Visualization function, by default it is applied to ALL snapshots
 
@@ -38,6 +39,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     cbarunits : units for the colorbar, defaut units of field
     cbarbounds : limits for the cbar, in units of cbarunits
     cmap : cmap to use
+    LogScale (True) : plot in log
 
     hnum : ID of the halo, in the last output, you want to center the images
     plothalos : circles around halos with a mass larger than masshalomin
@@ -116,7 +118,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         if hnum != None:
             prog_id = [prog_id[i-istart-1] for i in snap]
     
-    if plotsinks:
+    if sinkdynamics > 0:
             s=sink.Sinks()
 
     width_input = width
@@ -145,7 +147,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             hh = h.halos.loc[hid]
             c = [h.halos['x'][hid], h.halos['y'][hid], h.halos['z'][hid]]
             if width_input == 'Rvir':
-                width = (h.halos['rvir'][hid]*1000, 'kpc')
+                width = (2*h.halos['rvir'][hid]*1000, 'kpc')
 
         if bhid != None:
             ds.sink = sink.get_sinks(ds)
@@ -175,7 +177,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
                     p.annotate_text([ch.x.item(), ch.y.item(), ch.z.item()],
                                 text=str(ch.ID.item()),
-                                text_args={'color': 'black'})
+                                text_args={'color': 'black'},
+                                draw_inset_box=False)
 
                     if sinkdynamics > 0:
                         ch=s.sink[bhnum]
@@ -222,8 +225,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         if axis_units == None:
             p.annotate_scale(corner='upper_right')
         else:
-            p.annotate_scale(corner='upper_right', unit=axis_units)
-        p.annotate_timestamp(corner='upper_left', time=True, redshift=True)
+            p.annotate_scale(corner='upper_right', unit=axis_units, draw_inset_box=True)
+        p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
 
         p.set_cmap(field=field, cmap=cmap)
         if cbarunits == None:
@@ -232,7 +235,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             p.set_unit(field=field, new_unit=cbarunits)
         if cbarbounds !=None:
             p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
-            if cbarbounds[1] / cbarbounds[0] > 50:
+            if LogScale:
                 p.set_log(field, log=True)
 
         if axis_units == None:
@@ -243,3 +246,147 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
         p.save(path)
     return
+
+
+def plot_profiles(folder='./', center=[0.5,0.5,0.5],
+        rbound=[(0.01,'kpc'),(10, 'kpc')], ybound=None, units=None,
+        n_bins=128, log=True,
+        qtty=[('gas','density'),('deposit','stars_cic'),('deposit','dm_cic')],
+        weight_field=('index','cell_volume'), bin_fields=('index', 'radius'),
+        hnum=None, bhid=None, accumulation=False, snap=-1, filter=None):
+    """
+    This routine plot the profile for all snapshots
+
+    folder : location to save plots
+    center : center of the sphere for the plot, useless if hnum/bhid
+
+    rbound : min/max radius for the profile
+    ybound : min/max value to show, in units 'units'
+    units : unit to show the profile
+
+    n_bins : number of bin for the radius
+    log : if True then loglog plot
+    filter (None) : add a particular filter (for instance a temperature floor for gas) CARE WITH UNITS
+    example syntax for filter: "obj[('gas','temperature')] < 1e4]" (" and obj are mandatory)
+
+    qtty : list qqty to be profiled, must have the same dimension
+    weight_field : weight field for the profile
+
+    hnum : center on the center of the halo
+    bhid : center on a particular BH
+
+    accumulation : sum between 0 and r (cumulative profile)
+    snap : list of snapshots to profile
+    """
+
+    files = glob.glob('output_*/info*')
+    files.sort()
+
+    path=folder + '/profiles'
+    os.system('mkdir ' + path)
+
+    istart=0
+    if hnum != None:
+        t = trees.Forest(LoadGal=False)
+        hid = int(t.trees[(t.trees.halo_ts == t.trees.halo_ts.max())
+                      & (t.trees.halo_num == hnum)].halo_id)
+        prog_id = [_ for _ in t.get_main_progenitor(hid).halo_num]
+        prog_id = prog_id[::-1]
+        istart=len(files) - len(prog_id)
+        files=files[istart:]
+
+        path = path + '/Halo' + str(hnum)
+        os.system('mkdir ' + path)
+
+    if bhid != None:
+        path = path + '/BH' + str(bhid)
+        os.system('mkdir ' + path)
+        s=sink.Sinks()
+        tform=s.sink[bhid].t.min()
+        imin=0
+        for f in files:
+            ds=yt.load(f)
+            if ds.current_time < ds.arr(tform, 'Gyr'):
+                imin+=1
+        files=files[imin:]
+
+    path = path + '/'
+    for f in qtty:
+        path = path + f[0]+f[1]
+    os.system('mkdir ' + path)
+    path = path + '/'
+    path = path + bin_fields[0] + bin_fields[1] 
+    os.system('mkdir ' + path)
+
+    if snap != -1:
+        files = [files[i-istart-1] for i in snap]
+        if hnum != None:
+            prog_id = [prog_id[i-istart-1] for i in snap]
+
+    part=False
+    for field in qtty:
+        if (('stars' in field[1]) or ('dm' in field[1])):
+            part=True 
+
+    for fn in yt.parallel_objects(files):
+        plt.clf()
+        if part: 
+            ds = yt.load(fn, extra_particle_fields=[("particle_age", "d"),("particle_metallicity", "d")])
+        else:
+            ds = yt.load(fn)
+        i = files.index(fn)
+        
+        for field in qtty:
+          if 'stars' in field[1]:
+            yt.add_particle_filter(
+                "stars", function=fields.stars, filtered_type="io",
+                requires=["particle_age"])
+            ds.add_particle_filter("stars")
+          if 'dm' in field[1]:
+            yt.add_particle_filter(
+                "dm", function=fields.dm, filtered_type="io")
+            ds.add_particle_filter("dm")
+        
+        c = center
+        if hnum != None:
+            h = halos.HaloList(ds)
+            hid = prog_id[i]
+            hh = h.halos.loc[hid]
+            c = [h.halos['x'][hid], h.halos['y'][hid], h.halos['z'][hid]]
+
+        if bhid != None:
+            ds.sink = sink.get_sinks(ds)
+            bh = ds.sink.loc[ds.sink.ID == bhid]
+            c = [bh.x.item(), bh.y.item(), bh.z.item()]
+
+        sp=ds.sphere(c, (rbound[1][0]*2, rbound[1][1]))
+        if filter != None:
+            sp=ds.cut_region(sp, [filter])
+
+        p=yt.create_profile(data_source=sp, bin_fields=bin_fields, weight_field=weight_field,
+            fields=qtty,
+            accumulation=False,
+            n_bins=n_bins)
+
+        for field in qtty:
+            plt.plot(p.x.in_units(rbound[0][1]),
+                p[field].in_units(units) if units!=None else p[field],
+                label=field[0]+' '+field[1])
+
+        if log:
+            plt.loglog()
+
+        plt.legend()
+
+        plt.xlim(rbound[0][0], float(ds.arr(rbound[1][0],rbound[1][1]).in_units(rbound[0][1])))
+        if ybound != None:
+            plt.ylim(ybound[0], ybound[1])
+
+        plt.xlabel(bin_fields[1]+' ['+rbound[0][1]+']')
+        plt.ylabel(qtty[0][1]+' ['+(units if units!=None else str(p[qtty[0]].units))+']')
+        plt.title('t={:.3f} Gyr'.format(float(ds.current_time.in_units('Gyr'))))
+
+        plt.savefig(path+'/profile{:03}'.format(i+1))
+        plt.clf()
+    return
+
