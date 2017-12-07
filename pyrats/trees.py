@@ -14,7 +14,7 @@ TODO:
 
 """
 import matplotlib
-matplotlib.use('PDF')
+#matplotlib.use('PDF')
 from matplotlib import cm
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
