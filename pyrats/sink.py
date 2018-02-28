@@ -23,53 +23,29 @@ class Sinks(object):
     Read the sinks outputs from RAMSES and put them in a PandaFrame
     The sink output has to be computed with BH.py (explanation of this
     works is given in BH.py)
+    ID : [-1] read all sinks, [i,j] read sinks i and j only
     """
 
-    def __init__(self, ExtraProps=False, center='none'):
+    def __init__(self, ExtraProps=False, ID=[-1]):
 
         files = glob.glob('./sinks/BH*')
         files.sort()
 
-        snaps=glob.glob('output_*/info*')
-        ds=yt.load(snaps[0])
-        d=ds.all_data()
-        dx=float(ds.length_unit.in_units('pc')/2**ds.max_level*(1+ds.current_redshift))
+        #snaps=glob.glob('output_*/info*')
+        #ds=yt.load(snaps[0])
+        #d=ds.all_data()
+        #dx=float(ds.length_unit.in_units('pc')/2**ds.max_level*(1+ds.current_redshift))
+        
+        self.sink = [[] for _ in range(len(files))]
+        self.sink[0] = [pd.read_csv(files[0])]
+        if ID == [-1]:
+            files = files[1:]
+        else:
+            files = [files[i] for i in ID]
 
-        self.sink = [pd.read_csv(files[0])]
-        j=1
-        for f in tqdm(files[1:]):
-            self.sink += [pd.read_csv(f)]
-
-            if 'fact_stars' in self.sink[j].columns:
-                self.sink[j]['v_part'] = np.sqrt(self.sink[j].vx_part**2+self.sink[j].vy_part**2+self.sink[j].vz_part**2)
-                self.sink[j]['vsink_rel'] = np.sqrt((self.sink[j].vx_part-self.sink[j].vx)**2+(self.sink[j].vy_part-self.sink[j].vy)**2+(self.sink[j].vz_part-self.sink[j].vz)**2)
-                self.sink[j]['rinf'] = (self.sink[j].M/1e7)/(self.sink[j].vsink_rel/200)**2
-                CoulombLog = np.maximum(np.zeros(len(self.sink[j].t)), np.log(4*dx/self.sink[j].rinf))
-                self.sink[j]['a_stars_slow']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_stars*self.sink[j].rho_stars*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
-                self.sink[j]['a_dm_slow']  =4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_dm*self.sink[j].rho_dm*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
-                CoulombLog = np.minimum(np.zeros(len(self.sink[j].rinf)), self.sink[j].rinf - 4*dx) / (self.sink[j].rinf - 4*dx)  
-                self.sink[j]['a_stars_fast']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].fact_stars*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
-                self.sink[j]['a_dm_fast']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].fact_dm*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
-                self.sink[j]['a_dm'] = self.sink[j]['a_dm_slow']+self.sink[j]['a_dm_fast']
-                self.sink[j]['a_stars'] = self.sink[j]['a_stars_slow']+self.sink[j]['a_stars_fast']
-
-            if 'dv_x' in self.sink[j].columns:
-                self.sink[j]['vsink_rel'] = np.sqrt(self.sink[j].vx_part**2+self.sink[j].vy_part**2+self.sink[j].vz_part**2)
-                self.sink[j]['dv_drag'] = np.sqrt(self.sink[j].dv_x**2+self.sink[j].dv_y**2+self.sink[j].dv_z**2)
-                self.sink[j]['rinf'] = (self.sink[j].M/1e7)/(self.sink[j].vsink_rel/200)**2
-                CoulombLog = np.maximum(np.zeros(len(self.sink[j].t)), np.log(4*dx/self.sink[j].rinf))
-                self.sink[j]['a_stars_slow']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_stars*self.sink[j].rho_stars*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
-                self.sink[j]['a_dm_slow']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].frac_dm*self.sink[j].rho_dm*1.67e-24*CoulombLog/(self.sink[j].vsink_rel*1e5)**2*(3600*24*365*1e6)/1e5
-
-            M=self.sink[j].dv/self.sink[j].cs
-            self.sink[j]['rinf_gas'] = (self.sink[j].M/1e7)/((self.sink[j].dv**2+self.sink[j].cs**2)/200**2)
-            CoulombLog = np.minimum(np.zeros(len(self.sink[j].rinf_gas)), self.sink[j].rinf_gas - 4*dx) / (self.sink[j].rinf_gas - 4*dx)
-            fudge = M
-            fudge.loc[M < 0.95] = 1/M**2*(0.5*np.log((1+M)/(1-M)) - M)
-            fudge.loc[(M >= 0.95) & (M <= 1.007)] = 1
-            fudge.loc[M > 1.007] = 1/M**2*(0.5*np.log(M**2-1) + 3.2)
-            self.sink[j]['a_gas']=4*np.pi*(6.67e-8)**2*self.sink[j].M*2e33*self.sink[j].rho*1.67e-24/(self.sink[j].cs*1e5)**2*fudge*(3600*24*365*1e6)/1e5*CoulombLog
-       
+        j=0
+        for f in tqdm(files):
+            self.sink[ID[j]] = pd.read_csv(f)
             j+=1
 
         return
