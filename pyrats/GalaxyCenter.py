@@ -1,32 +1,47 @@
-import pyrats
 import yt
-from tqdm import tqdm
 import os as os
-import glob as glob
+from glob import glob
 import pandas as pd
+from tqdm import tqdm
+import pyrats
 
-#write the path to the folder that contains the outputs
-os.chdir('LOC')
+sims=[]
+init=1
 
-#First output with a BH (if you relaxed your galaxy before planting BH)
-imin = 1
 
-files=glob.glob('output*/info*')
-nsnaps=len(files)
-tmp={'t':[], 'cx':[], 'cy':[], 'cz':[], 'x':[], 'y':[], 'z':[]}
-for i in tqdm(range(nsnaps-1)):
-    i=i+imin
-    #ds=pyrats.load(i, stars=True, bh=True, dm=True)
-    ds=pyrats.load(i, bh=True, dm=True)
-    tmp['t']+=[float(ds.current_time.in_units('Gyr'))]
-    sp=ds.sphere([0.5,0.5,0.5], (1000, 'pc'))
-    #c=sp.argmax(('deposit','stars_cic'))
-    c=sp.argmax(('deposit','dm_cic'))
-    tmp['cx']+=[float(c[0])]
-    tmp['cy']+=[float(c[1])]
-    tmp['cz']+=[float(c[2])]
-    tmp['x']+=[ds.sink.x.item()]
-    tmp['y']+=[ds.sink.y.item()]
-    tmp['z']+=[ds.sink.z.item()]
-tmp=pd.DataFrame(data=tmp) 
-tmp.to_csv('./GalCenter.csv', index=False)
+for s in sims:
+    cx=[]; cy=[]; cz=[]; t=[]; x=[]; y=[]; z=[]
+    os.chdir('/home/pfister/scratch/'+s)
+    files=glob('output_*')
+    #for i in tqdm(range(3)):
+    for i in tqdm(range(len(files)-init+1)):
+        ds=pyrats.load(i+init, dm=True, bh=True, stars=True)
+
+        d=ds.all_data()
+        
+        t+=[float(ds.current_time.in_units('Gyr'))]
+        
+        ccx=float(d['dm','particle_position_x'].mean())
+        ccy=float(d['dm','particle_position_y'].mean())
+        ccz=float(d['dm','particle_position_z'].mean())
+        for r in [3000,2500,2000,1500,1000,750,500,300]:
+            sp=ds.sphere([ccx,ccy,ccz], (r,'pc'))
+            ccx=float(sp['dm','particle_position_x'].mean())
+            ccy=float(sp['dm','particle_position_y'].mean())
+            ccz=float(sp['dm','particle_position_z'].mean())
+
+        #arg=d['deposit','stars_cic'].argmax()
+        #cx+=[float(d['index','x'][arg])]
+        #cy+=[float(d['index','y'][arg])]
+        #cz+=[float(d['index','z'][arg])]
+        cx+=[ccx]
+        cy+=[ccy]
+        cz+=[ccz]
+        x+=[float(d['sink','particle_position_x'].mean())]
+        y+=[float(d['sink','particle_position_y'].mean())]
+        z+=[float(d['sink','particle_position_z'].mean())]
+
+    gal={'cx':cx, 'cy':cy, 'cz':cz, 't':t, 'x':x, 'y':y, 'z':z}
+    gal=pd.DataFrame(data=gal)
+    gal.to_csv('GalCenter.csv', index=False)
+
