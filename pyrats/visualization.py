@@ -4,8 +4,9 @@ from tqdm import tqdm
 import os
 import subprocess
 import matplotlib.pyplot as plt
+import pandas as pd
 
-from . import halos, trees, sink, fields
+from . import halos, trees, sink, fields, analysis
 
 def _mkdir(path):
     try:
@@ -93,6 +94,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             files = files[imin:]
         else:
             files = files[imin:imax]
+        istart=imin
 
     if slice:
         path = os.path.join(path, 'Slice')
@@ -178,7 +180,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                     p.annotate_text([ch.x.item(), ch.y.item(), ch.z.item()],
                                 text=str(ch.ID.item()),
                                 text_args={'color': 'black'},
-                                draw_inset_box=False)
+                                inset_box_args={'alpha': 0.0}
+                    )
 
                     if sinkdynamics > 0:
                         ch=s.sink[bhnum]
@@ -272,7 +275,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
     qtty : list qqty to be profiled, must have the same dimension
     weight_field : weight field for the profile
 
-    hnum : center on the center of the halo
+    hnum : centered on halo hid. If -1, and GalCen present, read it
     bhid : center on a particular BH
 
     accumulation : sum between 0 and r (cumulative profile)
@@ -287,6 +290,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
 
     istart=0
     if hnum != None:
+      if hnum > 0:
         t = trees.Forest(LoadGal=False)
         hid = int(t.trees[(t.trees.halo_ts == t.trees.halo_ts.max())
                       & (t.trees.halo_num == hnum)].halo_id)
@@ -347,26 +351,24 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
                 "dm", function=fields.dm, filtered_type="io")
             ds.add_particle_filter("dm")
         
-        c = center
         if hnum != None:
-            h = halos.HaloList(ds)
-            hid = prog_id[i]
-            hh = h.halos.loc[hid]
-            c = [h.halos['x'][hid], h.halos['y'][hid], h.halos['z'][hid]]
+            if hnum == -1:
+                GalCen = pd.read_csv('GalCenter.csv')
+                GalCen = GalCen.loc[i]
+                center = [GalCen.cx, GalCen.cy, GalCen.cz]
+                hid = None
+            else:
+                h = halos.HaloList(ds)
+                hid = prog_id[i]
+        else:
+            hid = None
 
-        if bhid != None:
-            ds.sink = sink.get_sinks(ds)
-            bh = ds.sink.loc[ds.sink.ID == bhid]
-            c = [bh.x.item(), bh.y.item(), bh.z.item()]
-
-        sp=ds.sphere(c, (rbound[1][0]*2, rbound[1][1]))
-        if filter != None:
-            sp=ds.cut_region(sp, [filter])
-
-        p=yt.create_profile(data_source=sp, bin_fields=bin_fields, weight_field=weight_field,
-            fields=qtty,
-            accumulation=False,
-            n_bins=n_bins)
+        p=analysis.profiles(ds, center=center,
+            rbound=rbound, n_bins=n_bins,
+            log=log,
+            qtty=qtty,
+            weight_field=weight_field, bin_fields=bin_fields,
+            hnum=hid, bhid=bhid, accumulation=accumulation, filter=filter)
 
         for field in qtty:
             plt.plot(p.x.in_units(rbound[0][1]),

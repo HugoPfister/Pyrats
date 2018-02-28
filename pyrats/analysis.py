@@ -40,6 +40,7 @@ def profiles(ds, center=[0.5,0.5,0.5],
 
     c = center
     if hnum != None:
+      if hnum > 0:
         h = halos.HaloList(ds)
         hh = h.halos.loc[hnum]
         c = [hh.x.item(), hh.y.item(), hh.z.item()]
@@ -55,7 +56,7 @@ def profiles(ds, center=[0.5,0.5,0.5],
 
     p=yt.create_profile(data_source=sp, bin_fields=bin_fields, weight_field=weight_field,
             fields=qtty,
-            accumulation=False,
+            accumulation=accumulation,
             n_bins=n_bins)
 
     return p
@@ -116,10 +117,10 @@ def dist_sink_to_halo(IDsink, IDhalos):
         dy=yh(bh.t)-(bh.y-0.5)*Lbox 
         dz=zh(bh.t)-(bh.z-0.5)*Lbox 
         
-        z=np.copy([1]*len(bh.t))
+        z=np.copy([0]*len(bh.t))
         if ds.cosmological_simulation == 1:
             z=ds.cosmology.z_from_t(ds.arr(list(bh.t), 'Gyr'))
-        d+=[np.sqrt(dx**2+dy**2+dz**2)/z]
+        d+=[np.sqrt(dx**2+dy**2+dz**2)/(1+z)]
         t+=[bh.t]
 
     return d, t
