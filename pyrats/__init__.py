@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import os as os
 
-from . import halos, fields, visualization, utils, physics, sink, analysis, load_snap
+from . import halos, fields, visualization, utils, physics, sink, analysis, load_snap, galaxies
 
 
-def load(files='', stars=False, dm=False, bh=False, halo=False, bbox=None, haloID=None):
+def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=None):
     """
     Load a RAMSES output, with options to filter stars, DM, BHs, or
     halos (from HaloFinder)
@@ -22,6 +22,6 @@ def load(files='', stars=False, dm=False, bh=False, halo=False, bbox=None, haloI
       computed with HaloFinder
     """
     
-    ds = load_snap.load(files=files, stars=stars, dm=dm, bh=bh, halo=halo, bbox=bbox, haloID=haloID)
+    ds = load_snap.load(files=files, stars=stars, dm=dm, MatchObjects=MatchObjects, bbox=bbox, haloID=haloID)
      
     return ds

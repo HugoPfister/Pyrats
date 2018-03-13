@@ -15,6 +15,7 @@ import yt
 from yt.utilities.logger import ytLogger as mylog
 import yt.utilities.fortran_utils as fpu
 from yt.funcs import get_pbar
+import os
 
 
 class HaloList(object):
@@ -135,83 +136,87 @@ class HaloList(object):
         filename = '{s.folder}/Halos/{s.iout}/tree_bricks{s.iout:03d}'.format(
             s=self)
 
-        with open(filename, 'rb') as f:
-            [npart] = fpu.read_vector(f, 'i')
-            [massp] = fpu.read_vector(f, 'f')
-            [aexp] = fpu.read_vector(f, 'f')
-            [omega_t] = fpu.read_vector(f, 'f')
-            [age] = fpu.read_vector(f, 'f')
-            [nhalos, nsubs] = fpu.read_vector(f, 'i')
+        
+        data = np.empty(shape=(0, len(halo_keys)), dtype=object)
+        if os.path.exists(filename):
+            with open(filename, 'rb') as f:
+                [npart] = fpu.read_vector(f, 'i')
+                [massp] = fpu.read_vector(f, 'f')
+                [aexp] = fpu.read_vector(f, 'f')
+                [omega_t] = fpu.read_vector(f, 'f')
+                [age] = fpu.read_vector(f, 'f')
+                [nhalos, nsubs] = fpu.read_vector(f, 'i')
 
-            # Save the age/aexp, the mass of the particle,
-            # as well as the number of (sub)halos
-            self.nhalos = nhalos
-            self.nsubs = nsubs
-            self.aexp = aexp
-            self.age = age
-            self.massp = massp
-            data = np.empty(shape=(nhalos + nsubs, len(halo_keys)), dtype=object)
+                # Save the age/aexp, the mass of the particle,
+                # as well as the number of (sub)halos
+                self.nhalos = nhalos
+                self.nsubs = nsubs
+                self.aexp = aexp
+                self.age = age
+                self.massp = massp
+                data = np.empty(shape=(nhalos + nsubs, len(halo_keys)), dtype=object)
 
-            mylog.info('Brick: halos       : %s' % nhalos)
-            mylog.info('Brick: sub halos   : %s' % nsubs)
-            mylog.info('Brick: aexp        : %s' % aexp)
+                mylog.info('Brick: halos       : %s' % nhalos)
+                mylog.info('Brick: sub halos   : %s' % nsubs)
+                mylog.info('Brick: aexp        : %s' % aexp)
 
-            pbar = get_pbar('', nhalos+nsubs)
-            for ihalo in range(nhalos + nsubs):
-                pbar.update()
-                [nbpart] = fpu.read_vector(f, 'i')  # Number of particles
-                listp = fpu.read_vector(f, 'i')  # List of the particles IDs
-                [ID] = fpu.read_vector(f, 'i')  # Halo ID
-                fpu.skip(f, 1) # Skip timestep
-                [level, host, hostsub, nbsub, nextsub] = fpu.read_vector(f, 'i')
-                [m] = fpu.read_vector(f, 'f')  # Total mass
-                [x, y, z] = fpu.read_vector(f, 'f')  # Center
-                [vx, vy, vz] = fpu.read_vector(f, 'f')  # Velocity
-                [Lx, Ly, Lz] = fpu.read_vector(f, 'f')  # Angular momentum
-                [r, a, b, c] = fpu.read_vector(f, 'f')  # Shape (ellipticity)
-                [ek, ep, et] = fpu.read_vector(f, 'f')  # Energetics
-                [spin] = fpu.read_vector(f, 'f')  # Total angular momentum
-                [rvir, mvir, tvir, cvel] = fpu.read_vector(f, 'f')  # Virial parameters
-                [rho0, r_c] = fpu.read_vector(f, 'f')  # ?
+                pbar = get_pbar('', nhalos+nsubs)
+                for ihalo in range(nhalos + nsubs):
+                    [nbpart] = fpu.read_vector(f, 'i')  # Number of particles
+                    listp = fpu.read_vector(f, 'i')  # List of the particles IDs
+                    [ID] = fpu.read_vector(f, 'i')  # Halo ID
+                    fpu.skip(f, 1) # Skip timestep
+                    [level, host, hostsub, nbsub, nextsub] = fpu.read_vector(f, 'i')
+                    [m] = fpu.read_vector(f, 'f')  # Total mass
+                    [x, y, z] = fpu.read_vector(f, 'f')  # Center
+                    [vx, vy, vz] = fpu.read_vector(f, 'f')  # Velocity
+                    [Lx, Ly, Lz] = fpu.read_vector(f, 'f')  # Angular momentum
+                    [r, a, b, c] = fpu.read_vector(f, 'f')  # Shape (ellipticity)
+                    [ek, ep, et] = fpu.read_vector(f, 'f')  # Energetics
+                    [spin] = fpu.read_vector(f, 'f')  # Total angular momentum
+                    [rvir, mvir, tvir, cvel] = fpu.read_vector(f, 'f')  # Virial parameters
+                    [rho0, r_c] = fpu.read_vector(f, 'f')  # ?
 
-                if with_contam_option:
-                    [contam] = fpu.read_vector(f, 'i')  # Contamination
+                    if with_contam_option:
+                        [contam] = fpu.read_vector(f, 'i')  # Contamination
 
-                # Add the halo to the list
-                # halos.loc[ihalo] = [ID, nbpart, level, listp.min(),
-                #                     host, hostsub, nbsub, nextsub,
-                #                     x, y, z, vx, vy, vz, Lx, Ly, Lz,
-                #                     a, b, c, ek, ep, et, rho0, r_c,
-                #                     spin, m, r, mvir, rvir, tvir, cvel]
-                data[ihalo] = [ID, nbpart, level, listp.min(),
-                               host, hostsub, nbsub, nextsub,
-                               x, y, z, vx, vy, vz, Lx, Ly, Lz,
-                               a, b, c, ek, ep, et, rho0, r_c,
-                               spin, m, r, mvir, rvir, tvir, cvel]
+                    # Add the halo to the list
+                    # halos.loc[ihalo] = [ID, nbpart, level, listp.min(),
+                    #                     host, hostsub, nbsub, nextsub,
+                    #                     x, y, z, vx, vy, vz, Lx, Ly, Lz,
+                    #                     a, b, c, ek, ep, et, rho0, r_c,
+                    #                     spin, m, r, mvir, rvir, tvir, cvel]
+                    data[ihalo] = [ID, nbpart, level, listp.min(),
+                                   host, hostsub, nbsub, nextsub,
+                                   x, y, z, vx, vy, vz, Lx, Ly, Lz,
+                                   a, b, c, ek, ep, et, rho0, r_c,
+                                   spin, m, r, mvir, rvir, tvir, cvel]
+                    pbar.update()
 
-            types = {}
-            for k in ('ID', 'nbpart', 'level', 'min_part_id',
-                      'host', 'hostsub', 'nbsub', 'nextsub'):
-                types[k] = np.int64
-            for k in ('x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly', 'Lz',
-                      'a', 'b', 'c', 'ek', 'ep', 'et', 'rho0', 'r_c',
-                      'spin', 'm', 'r', 'mvir', 'rvir', 'tvir', 'cvel'):
-                types[k] = np.float64
-            dd = {k: data[:, i].astype(types[k])
-                  for i, k in enumerate(halo_keys)}
+        print('')
+        types = {}
+        for k in ('ID', 'nbpart', 'level', 'min_part_id',
+                  'host', 'hostsub', 'nbsub', 'nextsub'):
+            types[k] = np.int64
+        for k in ('x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly', 'Lz',
+                  'a', 'b', 'c', 'ek', 'ep', 'et', 'rho0', 'r_c',
+                  'spin', 'm', 'r', 'mvir', 'rvir', 'tvir', 'cvel'):
+            types[k] = np.float64
+        dd = {k: data[:, i].astype(types[k])
+              for i, k in enumerate(halo_keys)}
 
-            halos = pd.DataFrame(dd)
+        halos = pd.DataFrame(dd)
 
-            # Get properties in the right units
-            # Masses
-            halos.m *= 1e11
-            halos.mvir *= 1e11
-            # Positions and distances
-            scale_mpc = float(data_set.length_unit.in_units('cm') / 3.08e24)
-            halos.x = halos.x / scale_mpc + .5
-            halos.y = halos.y / scale_mpc + .5
-            halos.z = halos.z / scale_mpc + .5
+        # Get properties in the right units
+        # Masses
+        halos.m *= 1e11
+        halos.mvir *= 1e11
+        # Positions and distances
+        scale_mpc = float(data_set.length_unit.in_units('cm') / 3.08e24)
+        halos.x = halos.x / scale_mpc + .5
+        halos.y = halos.y / scale_mpc + .5
+        halos.z = halos.z / scale_mpc + .5
 
-            return halos.set_index('ID')
+        return halos.set_index('ID')
 
 

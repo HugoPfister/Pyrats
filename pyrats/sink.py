@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env pythn tqdm(files): n
 
 """
 Module to deal with sinks
@@ -40,6 +40,7 @@ class Sinks(object):
         self.sink[0] = [pd.read_csv(files[0])]
         if ID == [-1]:
             files = files[1:]
+            ID = range(1, len(files)+1) 
         else:
             files = [files[i] for i in ID]
 
@@ -179,12 +180,9 @@ class Sinks(object):
             plt.ylabel('Distance [kpc]')
 
             plt.subplot(222)
-            plt.semilogy(sink.t, sink.rho, label='Gas')
-            if 'rho_stars' in sink.columns:
-                plt.semilogy(sink.t, sink.rho_stars, label='Stellar density', color='g')
-                plt.semilogy(sink.t, sink.rho_dm, label='DM density', color='orange')
-                plt.semilogy(sink.t, sink.rho_stars*sink.frac_stars, color='g', linestyle=':', alpha=0.7)
-                plt.semilogy(sink.t, sink.rho_dm*sink.frac_dm, linestyle=':', color='orange', alpha=0.7)
+            plt.semilogy(sink.t, sink.rho, label='Gas density')
+            plt.semilogy(sink.t, sink.rho_stars, label='Stellar density', color='g')
+            plt.semilogy(sink.t, sink.rho_dm, label='DM density', color='orange')
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('$\\rho$ [part cc$^{-1}$]')
@@ -196,6 +194,9 @@ class Sinks(object):
             plt.semilogy(sink.t, sink.cs, label='c$_s$', color='red')
             if 'vsink_rel' in sink.columns:
                 plt.semilogy(sink.t, sink.vsink_rel, label='$\Delta$v DM+stars', alpha=0.8, color='orange')
+            else:
+                plt.semilogy(sink.t, sink.vsink_rel_stars, label='$\Delta$v stars', alpha=0.8, color='g')
+                plt.semilogy(sink.t, sink.vsink_rel_dm, label='$\Delta$v DM', alpha=0.8, color='orange')
             
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
@@ -206,12 +207,11 @@ class Sinks(object):
             plt.subplot(224)
 
             plt.semilogy(sink.t, sink.a_gas, label='Gas')
-            if 'vsink_rel' in sink.columns:    
-                plt.semilogy(sink.t, sink.a_stars_slow, label='Stars slow', alpha=0.8, color='green')
-                plt.semilogy(sink.t, sink.a_dm_slow, alpha=0.8, color='orange', label='DM slow')
-            if 'a_stars_fast' in sink.columns:
-                plt.semilogy(sink.t, np.copy(sink.a_stars_fast), linestyle =':', color='green', alpha=1)
-                plt.semilogy(sink.t, np.copy(sink.a_dm_fast), alpha=1, linestyle=':', color='orange')
+            plt.semilogy(sink.t, sink.a_stars_slow, label='Stars slow', alpha=0.8, color='green')
+            plt.semilogy(sink.t, sink.a_dm_slow, alpha=0.8, color='orange', label='DM slow')
+            plt.semilogy(sink.t, np.copy(sink.a_stars_fast), linestyle =':', color='green', alpha=1)
+            plt.semilogy(sink.t, np.copy(sink.a_stars_fast), linestyle =':', color='green', alpha=1)
+            plt.semilogy(sink.t, np.copy(sink.a_dm_fast), alpha=1, linestyle=':', color='orange')
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('Acceleration [km/s Myr$^{-1}$]')
