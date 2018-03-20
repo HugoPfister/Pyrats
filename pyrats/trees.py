@@ -40,7 +40,7 @@ class Forest(object):
     r,rvir -> Mpc
     """
 
-    def __init__(self, snap=None, LoadGal=True):
+    def __init__(self, snap=None, Galaxies=False):
                  # sim={'Lbox': 10.0, 'h': 0.6711, 'Om': 0.3175, 'Ol': 0.6825}):
 
         paths = glob('output*/info*')
@@ -63,33 +63,40 @@ class Forest(object):
         _sim['Lbox'] = float(ds.length_unit.in_units('Mpccm'))
 
         treefolder = './Trees/'
+        if Galaxies:
+            treefolder = './TreeStars/'
 
         self.sim = _sim
         self.ds = ds
         self.folder = treefolder
         self.snap = self._get_timestep_number()
 
-        self.read_tree(LoadGal=LoadGal)
+        self.read_tree(Galaxies=Galaxies)
         self.outputs = paths[-int(self.trees.halo_ts.max()):]
 
-    def read_tree(self, LoadGal=True):
+    def read_tree(self, Galaxies=False):
         """
         """
+        
+        if Galaxies:
+            tree_file = '{}/tree.dat'.format(self.folder)
+            self = self._read_treeStars(tree_file)
+        else:
+            tstep_file = '{}/tstep_file_{:03d}.001'.format(self.folder, self.snap)
+            tree_file = '{}/tree_file_{:03d}.001'.format(self.folder, self.snap)
+            props_file = '{}/props_{:03d}.001'.format(self.folder, self.snap)
 
-        tstep_file = '{}/tstep_file_{:03d}.001'.format(self.folder, self.snap)
-        tree_file = '{}/tree_file_{:03d}.001'.format(self.folder, self.snap)
-        props_file = '{}/props_{:03d}.001'.format(self.folder, self.snap)
+            self.timestep = self._read_timesteps_props(tstep_file)
+            self.struct = self._read_tree_struct(tree_file)
+            self.prop = self._read_halo_props(props_file)
 
-        self.timestep = self._read_timesteps_props(tstep_file)
-        self.struct = self._read_tree_struct(tree_file)
-        self.prop = self._read_halo_props(props_file)
+            self.struct.set_index(self.struct.halo_id, inplace=True)
+            self.prop.set_index(self.struct.halo_id, inplace=True)
+            self.trees = pd.concat([self.prop, self.struct], axis=1)
 
-        self.struct.set_index(self.struct.halo_id, inplace=True)
-        self.prop.set_index(self.struct.halo_id, inplace=True)
-        self.trees = pd.concat([self.prop, self.struct], axis=1)
-
-        st = self.struct['halo_ts'] - 1
-        aexp = np.array([self.timestep['aexp'][int(i)] for i in st])
+            st = self.struct['halo_ts'] - 1
+            aexp = np.array([self.timestep['aexp'][int(i)] for i in st])
+        
         self.trees['x'] = self.trees['x'] * self.sim['Lbox'] / float(
             self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
         self.trees['y'] = self.trees['y'] * self.sim['Lbox'] / float(
@@ -97,20 +104,6 @@ class Forest(object):
 
         self.trees['z'] = self.trees['z'] * self.sim['Lbox'] / float(
             self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
-
-        if os.path.exists('./Galaxies') and LoadGal:
-            columns = ['pollution', 'mgal', 'sigma', 'dmdt1_1',
-                       'dmdt10_1', 'dmdt50_1', 'dmdt1_10', 'dmdt10_10', 'dmdt50_10']
-            GalProps = glob('./Galaxies/GalProp*')
-            GalProps.sort()
-            tmp = []
-            # for ts in range(int(self.trees.halo_ts.max().item())):
-            for ts in range(len(GalProps)):
-                gal = pd.read_csv(GalProps[ts], names=columns)
-                tt = self.trees.loc[self.trees.halo_ts == ts + 1]
-                gal.index = tt.index
-                tmp += [pd.concat([tt, gal], axis=1)]
-            self.trees = pd.concat(tmp)
 
         return
 
@@ -179,7 +172,7 @@ class Forest(object):
         tid = self.trees[mask].halo_id
         print('Total: {} halos'.format(len(tid)))
 
-        pdf = PdfPages(loc + 'trees{}.pdf'.format(output))
+        pdf = PdfPages(loc + 'trees{}fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff.pdf'.format(output))
         try:
             fig = self.fig
         except AttributeError:
@@ -676,3 +669,63 @@ class Forest(object):
             children = pd.concat((children, tree.loc[hid:hid]))
 
         return children
+
+    def _read_treeStars(self, tree_file):
+        Key_tree = ['ID', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id', 'm', 'dmacc', 'x','y','z', 'vx','vy','vz', 'Lx','Ly','Lz', 'r', 'a','b','c', 'ek','ep','et', 'spin', 'rvir', 'mvir', 'tvir', 'cvel', 'fathersID', 'fatherMass', 'sonsID']
+        
+        F = FF(tree_file)
+
+        self.timestep = {}
+        [self.timestep['nsteps']] = F.read_ints()
+
+        n_halo_tot = F.read_ints()
+        self.timestep['nhalos'] = n_halo_tot[:self.timestep['nsteps']]
+        self.timestep['aexp'] = F.read_reals(np.float32)
+        F.read_reals(np.float32)
+        self.timestep['age'] = F.read_reals(np.float32)
+
+        self.trees = pd.DataFrame(columns=Key_tree)
+
+        for istep in tqdm(range(self.timestep['nsteps'])):
+            for ihalo in range(n_halo_tot[istep]+n_halo_tot[istep]+self.timestep['nsteps']):
+                [ID] = F.read_ints()
+                [BushID] = F.read_ints()
+                [timestep] = F.read_ints()
+                [level, hosthaloID, hostsubID, nbsub, nextsub] = F.read_ints()
+                [m] = F.read_reals(np.float32)
+                [dmacc] = F.read_reals(np.float64)
+                [x,y,z] = F.read_reals(np.float32)
+                [vx,vy,vz] = F.read_reals(np.float32)
+                [Lx,Ly,Lz] = F.read_reals(np.float32)
+                [r,a,b,c] = F.read_reals(np.float32)
+                [ek, ep, et] = F.read_reals(np.float32)
+                [spin] = F.read_reals(np.float32)
+                [nbfather] = F.read_ints()
+                if nbfather == 1:
+                    fatherID = []
+                    fatherMass = [] 
+                    F.read_ints()
+                    F.read_reals(np.float32)
+                if nbfather > 1:
+                    fatherID = F.read_ints()
+                    fatherMass = F.read_reals(np.float32)
+                [nbsons] = F.read_ints()
+                if nbsons == 1:
+                    sonsID = []
+                    F.read_ints()
+                if nbsons > 1:
+                    sonsID = F.read_ints()
+                [rvir, mvir, tvir, cvel] = F.read_reals(np.float32)
+                [rho_0, r_c] = F.read_reals(np.float32)
+                ncont = F.read_ints()
+
+                temp = [ID, timestep, level, hosthaloID, hostsubID, m, dmacc, x, y, z, vx, vy, vz, Lx, Ly, Lz, r, a, b, c, ek, ep, et, spin, rvir, mvir, tvir, cvel, fatherID, fatherMass, sonsID]
+                temp = pd.DataFrame({Key_tree[j]: [temp[j]] for j in range(len(Key_tree))})
+
+        return self
+
+
+
+
+
+
