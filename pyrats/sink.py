@@ -125,7 +125,7 @@ class Sinks(object):
         return
 
     def plot_sink_dynamics(self, bhid=[0], loc='./', IDhalos=[0],
-                limrho=None, limv=None, limf=None, logDist=True):
+                limrho=None, limv=None, limf=None, limt=None,logDist=True):
         """
         Show on a same PDF distance, surrounding gas/stars/dm density, relative velocity and magnitude
         of the drag force
@@ -176,33 +176,37 @@ class Sinks(object):
                 plt.semilogy(t, d)
             else:    
                 plt.plot(t, d)
+            plt.plot([t.loc[1]],[d.loc[1]], color='C0', label='Gas')
+            plt.plot([t.loc[1]],[d.loc[1]], color='green', label='Stars')
+            plt.plot([t.loc[1]],[d.loc[1]], color='orange', label='DM')
+            plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
-            plt.ylabel('Distance [kpc]')
+            plt.ylabel('D$_\\mathrm{halo}$ [kpc]')
+            if limt is not None:
+                plt.xlim(limt[0], limt[1])
 
             plt.subplot(222)
             plt.semilogy(sink.t, sink.rho, label='Gas density')
             plt.semilogy(sink.t, sink.rho_stars, label='Stellar density', color='g')
             plt.semilogy(sink.t, sink.rho_dm, label='DM density', color='orange')
-            plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('$\\rho$ [part cc$^{-1}$]')
             if limrho is not None:
                 plt.ylim(limrho[0], limrho[1])
+            if limt is not None:
+                plt.xlim(limt[0], limt[1])
 
             plt.subplot(223)
             plt.semilogy(sink.t, sink.dv, label='$\Delta$v gas', alpha=0.8)
-            plt.semilogy(sink.t, sink.cs, label='c$_s$', color='red')
-            if 'vsink_rel' in sink.columns:
-                plt.semilogy(sink.t, sink.vsink_rel, label='$\Delta$v DM+stars', alpha=0.8, color='orange')
-            else:
-                plt.semilogy(sink.t, sink.vsink_rel_stars, label='$\Delta$v stars', alpha=0.8, color='g')
-                plt.semilogy(sink.t, sink.vsink_rel_dm, label='$\Delta$v DM', alpha=0.8, color='orange')
+            plt.semilogy(sink.t, sink.vsink_rel_stars, label='$\\Delta$v$_\\star$', alpha=0.8, color='green')
+            plt.semilogy(sink.t, sink.vsink_rel_dm, label='$\\Delta$v$_\\mathrm{DM}$', alpha=0.8, color='orange')
             
-            plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
-            plt.ylabel('velocity [km s$^{-1}$]')
+            plt.ylabel('v [km s$^{-1}$]')
             if limv is not None:
                 plt.ylim(limv[0], limv[1])
+            if limt is not None:
+                plt.xlim(limt[0], limt[1])
 
             plt.subplot(224)
 
@@ -212,13 +216,13 @@ class Sinks(object):
             plt.semilogy(sink.t, np.copy(sink.a_stars_fast), linestyle =':', color='green', alpha=1)
             plt.semilogy(sink.t, np.copy(sink.a_stars_fast), linestyle =':', color='green', alpha=1)
             plt.semilogy(sink.t, np.copy(sink.a_dm_fast), alpha=1, linestyle=':', color='orange')
-            plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
-            plt.ylabel('Acceleration [km/s Myr$^{-1}$]')
+            plt.ylabel('|$\\vec{a}$| [km/s Myr$^{-1}$]')
             plt.suptitle('BH #{:03}'.format(i+1)+' Halo #{:04}'.format(IDhalos[j]))
             if limf is not None:
                 plt.ylim(limf[0], limf[1])
-
+            if limt is not None:
+                plt.xlim(limt[0], limt[1])
 
 
             plt.savefig(loc + '/BHdynamics/BH{:03}'.format(i + 1) + '.pdf')

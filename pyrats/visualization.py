@@ -64,7 +64,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
     istart=0
     if hnum != None:
-        t = trees.Forest(LoadGal=False)
+        t = trees.Forest()
         hid = int(t.trees[(t.trees.halo_ts == t.trees.halo_ts.max())
                       & (t.trees.halo_num == hnum)].halo_id)
         prog_id = [_ for _ in t.get_main_progenitor(hid).halo_num]
@@ -291,7 +291,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
     istart=0
     if hnum != None:
       if hnum > 0:
-        t = trees.Forest(LoadGal=False)
+        t = trees.Forest()
         hid = int(t.trees[(t.trees.halo_ts == t.trees.halo_ts.max())
                       & (t.trees.halo_num == hnum)].halo_id)
         prog_id = [_ for _ in t.get_main_progenitor(hid).halo_num]

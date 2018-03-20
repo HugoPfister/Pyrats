@@ -50,71 +50,60 @@ def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=
     mylog.info('Reading halos and galaxies')
     halo = halos.HaloList(ds, folder=hp, contam=False)
     gal = galaxies.GalList(ds, folder=hp, contam=False)
+    halo.halos['pollution'] = 0
+    #read purity of halos
+    if os.path.exists('./Halos/'+str(ids)+'/contam_halos{:03}'.format(ids)):
+        p=np.loadtxt('./Halos/'+str(ids)+'/contam_halos{:03}'.format(ids))
+        if len(p) > 0:
+            p = p.T
+            halo.halos.loc[p[0], 'pollution'] = p[1]/p[2]
 
     sinks['hid'] = -1 ; sinks['galID'] = -1
-    sinks['mgal'] = 0 ; sinks['mbulge'] = 0 ; sinks['sigma_bulge'] = 0
+    sinks['mgal'] = 0 ; sinks['mbulge'] = 0 ; 
+    sinks['sigma_bulge'] = 0 ; sinks['mhalo'] = 0
     halo.halos['bhid'] = -1 ; halo.halos['galID'] = -1
+    halo.halos['mgal'] = 0 ; halo.halos['msink'] = 0
     gal.gal['bhid'] = -1 ; gal.gal['hid'] = -1
     gal.gal['msink'] = 0 ; gal.gal['mhalo'] = 0
     if MatchObjects:
         L = ds.length_unit.in_units('Mpc')
-        mylog.info('Matching sinks to haloes and galaxies')
-        #match sinks to haloes and galaxies
-        for bhid in sinks.ID:
-            bh = sinks[sinks.ID == bhid]
-            #haloes
-            hid = ((halo.halos.x - bh.x.item())**2 + (halo.halos.y - bh.y.item())** 2 + (halo.halos.z - bh.z.item())**2).argmin()
-            d = np.sqrt(((halo.halos.x - bh.x.item())**2 + (halo.halos.y - bh.y.item())** 2 + (halo.halos.z - bh.z.item())**2)[hid])
-            if d * L < 0.05 * halo.halos.rvir[hid]:
-                oldID = int(halo.halos.bhid[hid])
-                if oldID == -1:
-                    halo.halos.loc[hid, 'bhid'] = bhid
-                else:
-                    bhold = sinks.loc[sinks.ID == oldID]
-                    oldm = bhold.M.item()
-                    if bh.M.item() > oldm:
-                        halo.halos.loc[hid, 'bhid'] = bhid
-            
-            if d * L < halo.halos.rvir[hid]:
-                sinks.loc[sinks.ID == bhid, 'hid'] = hid
-            
-            #Galaxies
-            hid = ((gal.gal.x - bh.x.item())**2 + (gal.gal.y - bh.y.item())** 2 + (gal.gal.z - bh.z.item())**2).argmin()
-            d = np.sqrt(((gal.gal.x - bh.x.item())**2 + (gal.gal.y - bh.y.item())** 2 + (gal.gal.z - bh.z.item())**2)[hid])
-            if d * L < gal.gal.rvir[hid]:
-                oldID = int(gal.gal.bhid[hid])
-                if oldID == -1:
-                    gal.gal.loc[hid, 'bhid'] = bhid
-                    gal.gal.loc[hid, 'msink'] = bh.M.item()
-                else:
-                    oldm = gal.gal.msink[hid].item()
-                    if bh.M.item() > oldm:
-                        gal.gal.loc[hid, 'bhid'] = bhid
-                        gal.gal.loc[hid, 'msink'] = bh.M.item()
-                sinks.loc[sinks.ID == bhid, 'galID'] = hid
-                sinks.loc[sinks.ID == bhid, 'mgal'] = gal.gal.m[hid].item()
-                sinks.loc[sinks.ID == bhid, 'mbulge'] = gal.gal.mbulge[hid].item()
-                sinks.loc[sinks.ID == bhid, 'sigma_bulge'] = gal.gal.sigma_bulge[hid].item()
-            
-        mylog.info('Matching galaxies to haloes')
-        #match galaxies to haloes
-        for galID in gal.gal.index:
-            g=gal.gal.loc[galID]
-            hid = ((halo.halos.x - g.x.item())**2 + (halo.halos.y - g.y.item())** 2 + (halo.halos.z - g.z.item())**2).argmin()
-            d = np.sqrt(((halo.halos.x - g.x.item())**2 + (halo.halos.y - g.y.item())** 2 + (halo.halos.z - g.z.item())**2)[hid])
-            if d * L < 0.1 * halo.halos.rvir[hid]:
-                oldID = int(halo.halos.galID[hid])
-                if oldID == -1:
-                    halo.halos.loc[hid, 'galID'] = galID
-                else:
-                    oldm = gal.gal.m[oldID].item()
-                    if g.m.item() > oldm:
-                        halo.halos.loc[hid, 'galID'] = galID
-            
-            if d * L < halo.halos.rvir[hid]:
-                gal.gal.loc[galID, 'hid'] = hid
-                gal.gal.loc[galID, 'mhalo'] = halo.halos.m[hid].item()
-    
+        mylog.info('Matching galaxies and sinks to haloes')
+        #match galaxies and sinks to haloes
+        for hid in halo.halos.sort_values('level').index:
+            h=halo.halos.loc[hid]
+            d = np.sqrt((h.x.item() - gal.gal.x)**2 + (h.y.item() - gal.gal.y)** 2 + (h.z.item() - gal.gal.z)**2)
+            galID = gal.gal.loc[((d * L) < h.rvir.item()*0.1) & (gal.gal.mhalo < h.m.item())].index
+            if len(galID) != 0:
+                gal.gal.loc[galID, 'mhalo'] = h.m.item() 
+                gal.gal.loc[galID, 'hid'] = hid 
+                galID = gal.gal.loc[galID].m.argmax()
+                halo.halos.loc[hid, 'galID'] = galID
+                halo.halos.loc[hid, 'mgal'] = gal.gal.loc[galID].m.item()
+
+            d = np.sqrt((h.x.item() - sinks.x)**2 + (h.y.item() - sinks.y)** 2 + (h.z.item() - sinks.z)**2)
+            bhid = sinks.loc[((d * L) < h.rvir.item()*0.05) & (sinks.mhalo < h.m.item())].index
+            if len(bhid != 0):
+                sinks.loc[bhid, 'mhalo'] = h.m.item() 
+                sinks.loc[bhid, 'hid'] = hid 
+                bhid = sinks.loc[bhid].M.argmax()
+                halo.halos.loc[hid, 'bhid'] = bhid
+                halo.halos.loc[hid, 'msink'] = sinks.loc[bhid].M.item()
+        
+        mylog.info('Matching sinks to galaxies')
+        #match sinks to galaxies
+        for galID in gal.gal.sort_values('level').index:
+            g = gal.gal.loc[galID]
+            d = np.sqrt((g.x.item() - sinks.x)**2 + (g.y.item() - sinks.y)** 2 + (g.z.item() - sinks.z)**2)
+            bhid = sinks.loc[((d * L) < g.r.item()*0.5) & (sinks.mgal < g.m.item())].index
+            if len(bhid) > 0:
+                sinks.loc[bhid, 'mgal'] = g.m.item() 
+                sinks.loc[bhid, 'galID'] = galID
+                sinks.loc[bhid, 'mbulge'] = g.mbulge.item()
+                sinks.loc[bhid, 'sigma_bulge'] = g.sigma_bulge.item()
+                bhid = sinks.loc[bhid].M.argmax()
+                gal.gal.loc[galID, 'bhid'] = bhid
+                gal.gal.loc[galID, 'msink'] = sinks.loc[bhid].M.item()
+
     if (haloID != None):
         h=halo.halos.loc[haloID]
         center=np.copy([h.x,h.y,h.z])

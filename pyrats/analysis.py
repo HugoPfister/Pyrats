@@ -74,7 +74,7 @@ def dist_sink_to_halo(IDsink, IDhalos):
     The first element of IDsink is associated with the first of hid etc...
     """
     if np.copy(IDhalos).max() > 0:
-        tree = trees.Forest(LoadGal=False)
+        tree = trees.Forest()
 
     files = glob.glob('output*/info*')
     files.sort()
