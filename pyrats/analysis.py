@@ -61,13 +61,13 @@ def profiles(ds, center=[0.5,0.5,0.5],
 
     return p
 
-def dist_sink_to_halo(IDsink, IDhalos):
+def dist_sink_to_halo(IDsink, IDhalos, step=-1):
     """
     Use the tree from HaloFinder/TreeMaker and the sink files to
     compute the distance, as a function of time, between sinks and halos
     work also for non Cosmo sims, use GalFinder.py (explanation in GalFinder.py)
 
-    CARE : ALL IDs are set for the last output available
+    CARE :  
     IDsink = list of id sinks
     IDhalos = list of halos ids (given by HaloFinder), use -1 for GalFinder output
 

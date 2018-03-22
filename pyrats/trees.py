@@ -27,6 +27,7 @@ import numpy as np
 import yt
 from glob import glob
 import os
+import yt.utilities.fortran_utils as fpu
 
 from . import physics, halos, utils
 
@@ -73,6 +74,12 @@ class Forest(object):
 
         self.read_tree(Galaxies=Galaxies)
         self.outputs = paths[-int(self.trees.halo_ts.max()):]
+        self.galaxies = False
+        if Galaxies:
+            step_first_gal = len(paths) - self.trees.halo_ts.max()
+            self.trees.halo_ts += step_first_gal
+            self.galaxies = True
+            
 
     def read_tree(self, Galaxies=False):
         """
@@ -94,8 +101,8 @@ class Forest(object):
             self.prop.set_index(self.struct.halo_id, inplace=True)
             self.trees = pd.concat([self.prop, self.struct], axis=1)
 
-            st = self.struct['halo_ts'] - 1
-            aexp = np.array([self.timestep['aexp'][int(i)] for i in st])
+        st = self.trees['halo_ts'] - 1
+        aexp = np.array([self.timestep['aexp'][int(i)] for i in st])
         
         self.trees['x'] = self.trees['x'] * self.sim['Lbox'] / float(
             self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
@@ -172,7 +179,7 @@ class Forest(object):
         tid = self.trees[mask].halo_id
         print('Total: {} halos'.format(len(tid)))
 
-        pdf = PdfPages(loc + 'trees{}fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff.pdf'.format(output))
+        pdf = PdfPages(loc + 'trees{}.pdf'.format(output))
         try:
             fig = self.fig
         except AttributeError:
@@ -673,54 +680,65 @@ class Forest(object):
     def _read_treeStars(self, tree_file):
         Key_tree = ['ID', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id', 'm', 'dmacc', 'x','y','z', 'vx','vy','vz', 'Lx','Ly','Lz', 'r', 'a','b','c', 'ek','ep','et', 'spin', 'rvir', 'mvir', 'tvir', 'cvel', 'fathersID', 'fatherMass', 'sonsID']
         
-        F = FF(tree_file)
+        with open(tree_file, 'rb') as F:
+        #F = FF(tree_file, 'r')
 
-        self.timestep = {}
-        [self.timestep['nsteps']] = F.read_ints()
+            self.timestep = {}
+            [self.timestep['nsteps']] = fpu.read_vector(F, 'i')
 
-        n_halo_tot = F.read_ints()
-        self.timestep['nhalos'] = n_halo_tot[:self.timestep['nsteps']]
-        self.timestep['aexp'] = F.read_reals(np.float32)
-        F.read_reals(np.float32)
-        self.timestep['age'] = F.read_reals(np.float32)
+            n_halo_tot = fpu.read_vector(F, 'i')
+            self.timestep['nhalos'] = n_halo_tot[:self.timestep['nsteps']]
+            self.timestep['aexp'] = fpu.read_vector(F, 'f')
+            fpu.read_vector(F, 'f')
+            self.timestep['age'] = fpu.read_vector(F, 'f')
 
-        self.trees = pd.DataFrame(columns=Key_tree)
+            data = np.empty(shape=(n_halo_tot.sum(), len(Key_tree)), dtype=object)
 
-        for istep in tqdm(range(self.timestep['nsteps'])):
-            for ihalo in range(n_halo_tot[istep]+n_halo_tot[istep]+self.timestep['nsteps']):
-                [ID] = F.read_ints()
-                [BushID] = F.read_ints()
-                [timestep] = F.read_ints()
-                [level, hosthaloID, hostsubID, nbsub, nextsub] = F.read_ints()
-                [m] = F.read_reals(np.float32)
-                [dmacc] = F.read_reals(np.float64)
-                [x,y,z] = F.read_reals(np.float32)
-                [vx,vy,vz] = F.read_reals(np.float32)
-                [Lx,Ly,Lz] = F.read_reals(np.float32)
-                [r,a,b,c] = F.read_reals(np.float32)
-                [ek, ep, et] = F.read_reals(np.float32)
-                [spin] = F.read_reals(np.float32)
-                [nbfather] = F.read_ints()
-                if nbfather == 1:
-                    fatherID = []
-                    fatherMass = [] 
-                    F.read_ints()
-                    F.read_reals(np.float32)
-                if nbfather > 1:
-                    fatherID = F.read_ints()
-                    fatherMass = F.read_reals(np.float32)
-                [nbsons] = F.read_ints()
-                if nbsons == 1:
-                    sonsID = []
-                    F.read_ints()
-                if nbsons > 1:
-                    sonsID = F.read_ints()
-                [rvir, mvir, tvir, cvel] = F.read_reals(np.float32)
-                [rho_0, r_c] = F.read_reals(np.float32)
-                ncont = F.read_ints()
+            j=0
+            for istep in  tqdm(range(self.timestep['nsteps'])):
+            #for istep in tqdm(range(self.timestep['nsteps'])):
+                for ihalo in range(n_halo_tot[istep]+n_halo_tot[istep+self.timestep['nsteps']]):
+                    [ID] = fpu.read_vector(F, 'i')
+                    [BushID] = fpu.read_vector(F, 'i')
+                    [timestep] = fpu.read_vector(F, 'i')
+                    [level, hosthaloID, hostsubID, nbsub, nextsub] = fpu.read_vector(F, 'i')
+                    [m] = fpu.read_vector(F, 'f')
+                    [dmacc] = fpu.read_vector(F, 'd') 
+                    [x,y,z] = fpu.read_vector(F, 'f')
+                    [vx,vy,vz] = fpu.read_vector(F, 'f')
+                    [Lx,Ly,Lz] = fpu.read_vector(F, 'f')
+                    [r,a,b,c] = fpu.read_vector(F, 'f')
+                    [ek, ep, et] = fpu.read_vector(F, 'f')
+                    [spin] = fpu.read_vector(F, 'f')
+                    [nbfather] = fpu.read_vector(F, 'i')
+                    if nbfather == 0:
+                        fatherID = []
+                        fatherMass = [] 
+                    else:
+                        fatherID = fpu.read_vector(F, 'i')
+                        fatherMass = fpu.read_vector(F, 'f')
+                    [nbsons] = fpu.read_vector(F, 'i')
+                    if nbsons == 0:
+                        sonsID = []
+                    else:
+                        sonsID = fpu.read_vector(F, 'i')
+                    [rvir, mvir, tvir, cvel] = fpu.read_vector(F, 'f')
+                    [rho_0, r_c] = fpu.read_vector(F, 'f')
+                    ncont = fpu.read_vector(F, 'i')
 
-                temp = [ID, timestep, level, hosthaloID, hostsubID, m, dmacc, x, y, z, vx, vy, vz, Lx, Ly, Lz, r, a, b, c, ek, ep, et, spin, rvir, mvir, tvir, cvel, fatherID, fatherMass, sonsID]
-                temp = pd.DataFrame({Key_tree[j]: [temp[j]] for j in range(len(Key_tree))})
+                    data[j] = [ID, timestep, level, hosthaloID, hostsubID, m, dmacc, x, y, z, vx, vy, vz, Lx, Ly, Lz, r, a, b, c, ek, ep, et, spin, rvir, mvir, tvir, cvel, fatherID, fatherMass, sonsID]
+                    j += 1
+        
+        types = {}
+        for k in ('ID', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id', 'fathersID', 'sonsID'):
+            types[k] = np.int64
+        for k in ('m', 'dmacc', 'x','y','z', 'vx','vy','vz', 'Lx','Ly','Lz', 'r', 'a','b','c', 'ek','ep','et', 'spin', 'rvir', 'mvir', 'tvir', 'cvel', 'FatherMass'):
+            types[k] = np.float64
+        #dd = {k: data[:, i].astype(types[k])
+        dd = {k: data[:, i]
+              for i, k in enumerate(Key_tree)}
+
+        self.trees = pd.DataFrame(dd) 
 
         return self
 

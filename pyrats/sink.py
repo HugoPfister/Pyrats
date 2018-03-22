@@ -225,7 +225,7 @@ class Sinks(object):
                 plt.xlim(limt[0], limt[1])
 
 
-            plt.savefig(loc + '/BHdynamics/BH{:03}'.format(i + 1) + '.pdf')
+            plt.savefig(loc + '/BHdynamics/BH{:03}_Halo{:04}.pdf'.format(i+1, IDhalos[i]))
             plt.clf()
             plt.close('all')
         plt.rcParams.update({'font.size': 10})
