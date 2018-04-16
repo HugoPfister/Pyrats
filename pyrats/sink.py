@@ -124,7 +124,7 @@ class Sinks(object):
         plt.rcParams.update({'font.size': 10})
         return
 
-    def plot_sink_dynamics(self, bhid=[0], loc='./', IDhalos=[0],
+    def plot_sink_dynamics(self, bhid=[0], loc='./', IDhalos=[0], Galaxy=False, timestep=None,
                 limrho=None, limv=None, limf=None, limt=None,logDist=True):
         """
         Show on a same PDF distance, surrounding gas/stars/dm density, relative velocity and magnitude
@@ -168,20 +168,22 @@ class Sinks(object):
             plt.figure()
             plt.subplot(221)
 
-            d, t=analysis.dist_sink_to_halo(IDsink=[i+1], IDhalos=[IDhalos[j]])
+            d, t=analysis.dist_sink_to_halo(IDsink=[i+1], IDhalos=[IDhalos[j]], Galaxy=Galaxy, timestep=timestep)
             if len(t[0]) > 1000:
-                d=d[0][::len(t[0])//1000]
-                t=t[0][::len(t[0])//1000]
+                d=[d[0][::len(t[0])//1000]]
+                t=[t[0][::len(t[0])//1000]]
             if (logDist):
-                plt.semilogy(t, d)
+                plt.semilogy(t[0], d[0])
             else:    
                 plt.plot(t, d)
-            plt.plot([t.loc[1]],[d.loc[1]], color='C0', label='Gas')
-            plt.plot([t.loc[1]],[d.loc[1]], color='green', label='Stars')
-            plt.plot([t.loc[1]],[d.loc[1]], color='orange', label='DM')
+            plt.plot([t[0].min()],[d[0].min()], color='C0', label='Gas')
+            plt.plot([t[0].min()],[d[0].min()], color='green', label='Stars')
+            plt.plot([t[0].min()],[d[0].min()], color='orange', label='DM')
             plt.legend(loc='best')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('D$_\\mathrm{halo}$ [kpc]')
+            if Galaxy:
+                plt.ylabel('D$_\\mathrm{galaxy}$ [kpc]')
             if limt is not None:
                 plt.xlim(limt[0], limt[1])
 
@@ -218,14 +220,18 @@ class Sinks(object):
             plt.semilogy(sink.t, np.copy(sink.a_dm_fast), alpha=1, linestyle=':', color='orange')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('|$\\vec{a}$| [km/s Myr$^{-1}$]')
-            plt.suptitle('BH #{:03}'.format(i+1)+' Halo #{:04}'.format(IDhalos[j]))
+            plt.suptitle('BH #{:03}'.format(i+1)+' Halo #{:04} in output_{:05}'.format(IDhalos[j], timestep))
+            if Galaxy:
+                plt.suptitle('BH #{:03}'.format(i+1)+' Galaxy #{:04} in output_{:05}'.format(IDhalos[j], timestep))
             if limf is not None:
                 plt.ylim(limf[0], limf[1])
             if limt is not None:
                 plt.xlim(limt[0], limt[1])
 
-
-            plt.savefig(loc + '/BHdynamics/BH{:03}_Halo{:04}.pdf'.format(i+1, IDhalos[i]))
+            if Galaxy:
+                plt.savefig(loc + '/BHdynamics/BH{:03}_Galaxy{:04}_ts{:03}.pdf'.format(i+1, IDhalos[j], timestep))
+            else:
+                plt.savefig(loc + '/BHdynamics/BH{:03}_Halo{:04}_ts{:03}.pdf'.format(i+1, IDhalos[j], timestep))
             plt.clf()
             plt.close('all')
         plt.rcParams.update({'font.size': 10})

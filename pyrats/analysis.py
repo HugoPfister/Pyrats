@@ -13,9 +13,10 @@ from . import halos, trees, sink, fields
 def profiles(ds, center=[0.5,0.5,0.5],
         rbound=[(0.01,'kpc'),(10, 'kpc')],
         n_bins=128, log=True,
-        qtty=[('gas','density'),('deposit','stars_cic'),('deposit','dm_cic')],
+        qtty=[("gas","density"),("deposit","stars_cic"),("deposit","dm_cic")],
         weight_field=('index','cell_volume'), bin_fields=('index', 'radius'),
-        hnum=None, bhid=None, accumulation=False, filter=None):
+        hnum=None, Galaxy=False, bhid=None, 
+        accumulation=False, filter=None):
     """
     This routine plot the profile for all snapshots
 
@@ -38,30 +39,33 @@ def profiles(ds, center=[0.5,0.5,0.5],
     ds : dataset to profile 
     """
 
+    yt.funcs.mylog.setLevel(40)
     c = center
     if hnum != None:
       if hnum > 0:
-        h = halos.HaloList(ds)
-        hh = h.halos.loc[hnum]
-        c = [hh.x.item(), hh.y.item(), hh.z.item()]
+        if Galaxy:
+            h = ds.gal.gal.loc[hnum]
+        else:
+            h = ds.halo.halos.loc[hnum]
+        c = [h.x.item(), h.y.item(), h.z.item()]
 
     if bhid != None:
-        ds.sink = sink.get_sinks(ds)
         bh = ds.sink.loc[ds.sink.ID == bhid]
         c = [bh.x.item(), bh.y.item(), bh.z.item()]
 
-    sp=ds.sphere(c, (rbound[1][0]*2, rbound[1][1]))
+    sp=ds.sphere(c, (rbound[1][0], rbound[1][1]))
     if filter != None:
         sp=ds.cut_region(sp, [filter])
 
     p=yt.create_profile(data_source=sp, bin_fields=bin_fields, weight_field=weight_field,
             fields=qtty,
             accumulation=accumulation,
-            n_bins=n_bins)
+            n_bins=n_bins, deposition='cic')
+    yt.funcs.mylog.setLevel(20)
 
     return p
 
-def dist_sink_to_halo(IDsink, IDhalos, step=-1):
+def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
     """
     Use the tree from HaloFinder/TreeMaker and the sink files to
     compute the distance, as a function of time, between sinks and halos
@@ -74,7 +78,7 @@ def dist_sink_to_halo(IDsink, IDhalos, step=-1):
     The first element of IDsink is associated with the first of hid etc...
     """
     if np.copy(IDhalos).max() > 0:
-        tree = trees.Forest()
+        tree = trees.Forest(Galaxy=Galaxy)
 
     files = glob.glob('output*/info*')
     files.sort()
@@ -103,14 +107,18 @@ def dist_sink_to_halo(IDsink, IDhalos, step=-1):
                 tmax = min(Gal.t.max(), bh.t.max())
 
         if hid > 0:
-            prog = tree.get_main_progenitor(int(tree.trees.loc[(tree.trees.halo_num == hid) & (tree.trees.halo_ts == tree.trees.halo_ts.max())].halo_id))
-        
-            xh = interp1d(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()], prog.x[::-1]*1000, kind='cubic')
-            yh = interp1d(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()], prog.y[::-1]*1000, kind='cubic')
-            zh = interp1d(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()], prog.z[::-1]*1000, kind='cubic')
+            FirstOutput = tree.trees.halo_ts.min()
+            prog = tree.get_family(hid, timestep=timestep)
+            #prog = tree.get_main_progenitor(hid, timestep=timestep)
+            prog['halo_ts'] -= FirstOutput
+            prog = prog.loc[prog.halo_ts < 45]
 
-            tmin=max(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()].min(),bh.t.min())
-            tmax=min(tree.timestep['age'][prog.halo_ts.min()-1:prog.halo_ts.max()].max(),bh.t.max())
+            xh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.x*1000, kind='cubic')
+            yh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.y*1000, kind='cubic')
+            zh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.z*1000, kind='cubic')
+
+            tmin=max(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1].min(),bh.t.min())
+            tmax=min(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1].max(),bh.t.max())
             
         bh = bh.loc[(bh.t > tmin) & (bh.t < tmax)]
         dx=xh(bh.t)-(bh.x-0.5)*Lbox 

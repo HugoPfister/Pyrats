@@ -34,28 +34,23 @@ from . import physics, halos, utils
 
 class Forest(object):
     """
-    Read the outputs from TreeMaker, units are
+    Read the outputs from TreeMaker and gather in a dataframe
+    in self.trees
+    units are:
     x,y,z -> Mpccm
     vx,vy,xz -> km/s (to check)
     m,mvir -> 1e11Msun
     r,rvir -> Mpc
     """
 
-    def __init__(self, snap=None, Galaxies=False):
+    def __init__(self, Galaxy=False):
                  # sim={'Lbox': 10.0, 'h': 0.6711, 'Om': 0.3175, 'Ol': 0.6825}):
 
         paths = glob('output*/info*')
         paths.sort()
-        if snap is None:
-            i = -1
-        else:
-            path = 'output_{0:05d}/info_{0:05d}.txt'.format(snap)
-            if path not in paths:
-                raise FileNotFoundError
-
-            i = paths.index(path)
-
-        ds = yt.load(paths[i])
+        yt.funcs.mylog.setLevel(40)
+        ds = yt.load(paths[-1])
+        yt.funcs.mylog.setLevel(20)
 
         _sim = {}
         _sim['h'] = float(ds.cosmology.hubble_constant)
@@ -64,28 +59,27 @@ class Forest(object):
         _sim['Lbox'] = float(ds.length_unit.in_units('Mpccm'))
 
         treefolder = './Trees/'
-        if Galaxies:
+        self.galaxies = False
+        if Galaxy:
             treefolder = './TreeStars/'
+            self.galaxies = True
 
         self.sim = _sim
         self.ds = ds
         self.folder = treefolder
         self.snap = self._get_timestep_number()
 
-        self.read_tree(Galaxies=Galaxies)
+        self.read_tree()
         self.outputs = paths[-int(self.trees.halo_ts.max()):]
-        self.galaxies = False
-        if Galaxies:
-            step_first_gal = len(paths) - self.trees.halo_ts.max()
-            self.trees.halo_ts += step_first_gal
-            self.galaxies = True
+        step_first_gal = len(paths) - self.trees.halo_ts.max()
+        self.trees.halo_ts += step_first_gal
             
 
-    def read_tree(self, Galaxies=False):
+    def read_tree(self):
         """
         """
         
-        if Galaxies:
+        if self.galaxies:
             tree_file = '{}/tree.dat'.format(self.folder)
             self = self._read_treeStars(tree_file)
         else:
@@ -114,43 +108,120 @@ class Forest(object):
 
         return
 
-    def get_all_progenitors(self, hid, timestep=None):
+    def get_all_progenitors(self, hnum, timestep=None):
         """Return the reduced tree containing ONLY the progenitors of halo hid
         ==========
-        * hid: ID of the halo in the tree: halo_ID, which usually
-          different than the ID from the HaloFinder given by halo_num
-        * timestep (None): return the progenitor at a certain timestep only
-        !!!CARE!!!
-        The timestep is the one from the TREE and not from the
-        simulation, i.e, first outputs without halos are not taken
-        into account
+        * hid: ID of the halo at output timestep given by the halo/galaxy finder 
+        * timestep (None): timestep at which the ID must be taken, default is last timestep
         """
 
-        progenitors = self._get_progenitors(hid)
-
-        if timestep is not None:
-            progenitors = progenitors[progenitors['halo_ts'] == timestep]
+        if timestep is None:
+            ts = self.halo_ts.max()
+        print('Care, this can be very long for galaxies. The get_main_progenitor is much faster')
+        print('It is OK for Haloes')
+        progenitors = self._get_progenitors(hnum, timestep=ts)
 
         return progenitors
 
-    def get_main_progenitor(self, hid):
-        """Return the reduced tree containing the most massive halo branch"""
+    def get_main_progenitor(self, hnum, timestep=None):
+        """Return the reduced tree containing ONLY the main progenitors of halo hid
+        ==========
+        * hid: ID of the halo at output timestep given by the halo/galaxy finder 
+        * timestep (None): timestep at which the ID must be taken, default is last timestep
+        """
         id_main = {}
+        if timestep == None:
+            ts = self.trees.halo_ts.max()
+        else:
+            ts = timestep
+        
+        if self.galaxies:
+            progenitors = self.trees.loc[(self.trees.halo_num == hnum) & (self.trees.halo_ts == ts)]
+            if len(progenitors) == 0:
+                return
+            else:
+                if len(progenitors.fathersID.item()) == 1:
+                    return progenitors
+                else:
+                    fathers = pd.concat([self.trees.loc[(self.trees.halo_num == fatherID) & (self.trees.halo_ts == ts-1)] for fatherID in progenitors.fathersID.item()])
+                    fathers = fathers.loc[fathers.m == fathers.m.max()]
+                    progenitors = pd.concat([progenitors, self.get_main_progenitor(fathers.halo_num.item(), ts-1)])
+                    return progenitors
 
-        current_prog = hid
-        current_ts = self.trees.halo_ts[current_prog]
-        id_main[current_ts] = current_prog
-        prog = self.trees.first_prog[current_prog]
-
-        while prog != -1:
-            current_prog = prog
+        else:
+            current_prog = self.trees.loc[(self.trees.halo_num == hnum) & (self.trees.halo_ts == ts)].halo_id.item()
             current_ts = self.trees.halo_ts[current_prog]
             id_main[current_ts] = current_prog
             prog = self.trees.first_prog[current_prog]
 
-        main_progs = pd.concat([self.trees[self.trees.halo_id == id_main[ID]]
+            while prog != -1:
+                current_prog = prog
+                current_ts = self.trees.halo_ts[current_prog]
+                id_main[current_ts] = current_prog
+                prog = self.trees.first_prog[current_prog]
+
+            main_progs = pd.concat([self.trees[self.trees.halo_id == id_main[ID]]
                                 for ID in id_main], axis=0, join='inner')
         return main_progs
+
+    def get_main_children(tree, hnum, timestep=None):
+        """Return the reduced tree containing ONLY the main children of halo hid
+        ==========
+        * hid: ID of the halo at output timestep given by the halo/galaxy finder 
+        * timestep (None): timestep at which the ID must be taken, default is last timestep
+        """
+        # Get current timestep
+        if timestep == None:
+            cts = tree.halo_ts.max()
+        else:
+            cts = timestep
+
+        if tree.galaxies:
+            childs = tree.trees.loc[(tree.trees.halo_num == hnum) & (tree.trees.halo_ts == cts)]
+            if len(childs) == 0:
+                return
+            else:
+                if len(childs.sonsID.item()) == 0:
+                    return childs
+                else:
+                    sons = pd.concat([tree.trees.loc[(tree.trees.halo_num == sonID) & (tree.trees.halo_ts == cts+1)] for sonID in childs.sonsID.item()])
+                    sons = sons.loc[sons.m == sons.m.max()]
+                    childs = pd.concat([childs, tree.get_main_children(sons.halo_num.item(), cts+1)])
+                    return childs
+
+        else:
+            hid = tree.trees.loc[(tree.trees.halo_ts == cts) & (tree.trees.halo_num == hnum)].index.item()
+            all_id = []
+            for ts in range(cts, tree.trees.halo_ts.max()+1):
+                all_id += [hid] 
+                # Get most massive one
+                hid = tree.trees.loc[hid].descendent_id
+
+            children = tree.trees.loc[all_id] 
+
+        return children
+
+    def get_family(tree, hnum, timestep=None):
+        """Return the reduced tree containing ONLY the main progenitors/children of halo hid
+        ==========
+        * hid: ID of the halo at output timestep given by the halo/galaxy finder 
+        * timestep (None): timestep at which the ID must be taken, default is last timestep
+        """
+        # Get current timestep
+        if timestep == None:
+            ts = tree.trees.halo_ts.max()
+        else:
+            ts = timestep
+        my_index = tree.trees.loc[(tree.trees.halo_ts == ts) & (tree.trees.halo_num == hnum)].index.item()
+        child = tree.get_main_children(hnum, timestep)
+        fathers = tree.get_main_progenitor(hnum, timestep)
+        fathers = fathers.loc[fathers.index != my_index]
+        family = pd.concat((child, fathers))
+        family = family.sort_values(by=['halo_ts'])
+
+        return family 
+
+
 
     def plot_all_trees(self, minmass=-1, maxmass=1e99, radius=1.0,
                        output=None, loc='./'):
@@ -651,37 +722,33 @@ class Forest(object):
 
         return props
 
-    def _get_progenitors(self, hid, timestep=None):
-        target = self.trees.ix[hid]
-        mask = ((self.trees.halo_id >= hid) &
-                (self.trees.halo_id <= target['last_prog']))
-        if timestep is not None:
-            mask = (mask & (self.trees.halo_ts == timestep))
+    def _get_progenitors(self, hid, timestep):
+        if self.galaxies:
+            progenitors = self.trees.loc[(self.trees.halo_num == hid) & (self.trees.halo_ts == timestep)]
+            if len(progenitors) == 0:
+                return
+            else:
+                if len(progenitors.fathersID.item()) == 1:
+                    return progenitors
+                else:
+                    for fatherID in progenitors.fathersID.item():
+                        progenitors = pd.concat([progenitors, self._get_progenitors(fatherID, timestep-1)])
+                    return progenitors
+            
+        else:
+            target = self.trees.loc[(self.trees.halo_num == hid) & (self.trees.halo_ts == timestep)].index
+            print(target)
+            mask = ((self.trees.halo_id >= self.trees.loc[target].halo_id.item()) &
+                    (self.trees.halo_id <= self.trees.loc[target].last_prog.item()))
 
-        progenitors = self.trees.loc[mask].copy()
-        return progenitors
+            progenitors = self.trees.loc[mask].copy()
+            return progenitors
 
-
-    def get_main_children(tree, hid, timestep=None):
-        # Get current timestep
-        cts = tree.loc[hid].halo_ts
-
-        children = pd.DataFrame(tree.loc[hid:hid])
-
-        for ts in range(cts+1, tree.halo_ts.max()):
-            prev_hid = hid
-            # Get most massive one
-            hid = tree.loc[hid].descendent_id
-
-            children = pd.concat((children, tree.loc[hid:hid]))
-
-        return children
 
     def _read_treeStars(self, tree_file):
-        Key_tree = ['ID', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id', 'm', 'dmacc', 'x','y','z', 'vx','vy','vz', 'Lx','Ly','Lz', 'r', 'a','b','c', 'ek','ep','et', 'spin', 'rvir', 'mvir', 'tvir', 'cvel', 'fathersID', 'fatherMass', 'sonsID']
+        Key_tree = ['halo_num', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id', 'm', 'dmacc', 'x','y','z', 'vx','vy','vz', 'Lx','Ly','Lz', 'r', 'a','b','c', 'ek','ep','et', 'spin', 'rvir', 'mvir', 'tvir', 'cvel', 'fathersID', 'fatherMass', 'sonsID']
         
         with open(tree_file, 'rb') as F:
-        #F = FF(tree_file, 'r')
 
             self.timestep = {}
             [self.timestep['nsteps']] = fpu.read_vector(F, 'i')
@@ -695,8 +762,7 @@ class Forest(object):
             data = np.empty(shape=(n_halo_tot.sum(), len(Key_tree)), dtype=object)
 
             j=0
-            for istep in  tqdm(range(self.timestep['nsteps'])):
-            #for istep in tqdm(range(self.timestep['nsteps'])):
+            for istep in  range(self.timestep['nsteps']):
                 for ihalo in range(n_halo_tot[istep]+n_halo_tot[istep+self.timestep['nsteps']]):
                     [ID] = fpu.read_vector(F, 'i')
                     [BushID] = fpu.read_vector(F, 'i')

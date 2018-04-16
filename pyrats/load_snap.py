@@ -7,15 +7,9 @@ import os as os
 from . import halos, fields, visualization, utils, physics, sink, analysis, load_snap, galaxies
 
 
-def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=None):
+def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=None, Galaxy=False, bhID=None, radius=None):
     """
-    Load a RAMSES output, with options to filter stars, DM, BHs, or
-    halos (from HaloFinder)
-    * files: output/info from ramses
-    * stars (False): if True, then add a filter to select star particles
-    * dm (False): if True, then add a filter to select dm particles
-    * halo (False): if True, load halos, tree_brick must be in ./Halos/ID output/tree_brick and
-      computed with HaloFinder
+    Read __init_.load function for infos
     """
 
     if type(files) == int:
@@ -30,21 +24,11 @@ def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=
     mylog.info('Reading sinks')
     sinks = sink.get_sinks(ds)
 
-    #if the location of tree_brick is specified instead of the structure
-    #Halos/output_number/tree_brick
-    #if type(halo) == str:
-    #    # Remove trailing '/'
-    #    if halo[-1] == '/':
-    #        halo = halo[:-1]
-    #    hp = os.path.split(halo)[0]
-    #    p = os.path.join(halo, str(ids), 'tree_bricks%.3i' % ids)
-    #else:
     hp = './'
     p = os.path.join('Halos', str(ids), 'tree_bricks%.3i' % ids)
     halo_ok = os.path.exists(p)
-    if not halo_ok:
-        mylog.warning('Halo flag is set yet we could not find any'
-                      ' Halo directory. Tried %s' % p)
+    if not halo_ok & ds.cosmological_simulation == 1:
+        mylog.warning('Could not find any Halo directory. Tried %s' % p)
     
     #load halos and galaxies
     mylog.info('Reading halos and galaxies')
@@ -104,10 +88,25 @@ def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=
                 gal.gal.loc[galID, 'bhid'] = bhid
                 gal.gal.loc[galID, 'msink'] = sinks.loc[bhid].M.item()
 
+    #Load only the relevant part of the simulation
     if (haloID != None):
-        h=halo.halos.loc[haloID]
+        if Galaxy:
+            h=gal.gal.loc[haloID]
+        else:
+            h=halo.halos.loc[haloID]
         center=np.copy([h.x,h.y,h.z])
-        w=2*h.rvir/float(ds.length_unit.in_units('Mpc'))
+        w=2*h.r/float(ds.length_unit.in_units('Mpc'))
+        if radius != None:
+            w=float(ds.arr(radius[0]*2, radius[1]).in_units('code_length'))
+        bbox=[center-w, center+w] 
+
+    if (bhID != None):
+        h = sinks.loc[sinks.ID == bhID]
+        center=np.copy([h.x.item(),h.y.item(),h.z.item()])
+        if radius == None:
+            print('Please specify a radius (10, \'kpc\') for the region')
+        else:
+            w=float(ds.arr(radius[0], radius[1]).in_units('code_length'))
         bbox=[center-w, center+w] 
     
     if (stars or dm):

@@ -6,7 +6,7 @@ import subprocess
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from . import halos, trees, sink, fields, analysis
+from . import halos, trees, sink, fields, analysis, load_snap
 
 def _mkdir(path):
     try:
@@ -18,10 +18,11 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    field=('deposit','all_density'),
                    weight_field=('index','ones'), slice=False,
                    width=(10, 'kpc'), axis_units='kpc', folder='./',
-                   cbarunits=None, cbarbounds=None, cmap='viridis',
-                   hnum=None, plothalos=False, masshalomin=1e10,
-                   bhid=None, plotsinks=False, plotparticles=False,
-                   sinkdynamics=0, snap=-1, LogScale=True):
+                   cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
+                   hnum=None, timestep=None, Galaxy=False, bhid=None, 
+                   plothalos=False, masshalomin=1e10,
+                   plotsinks=False, plotparticles=False, sinkdynamics=0,
+                   snap=-1):
     """
     Visualization function, by default it is applied to ALL snapshots
 
@@ -54,47 +55,46 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
     snap : list of snapshots you want to show, default ALL (-1)
     """
-    #TODO : defaut value for width when halos is Rvir in commobile units
 
+    yt.funcs.mylog.setLevel(40)
     files = glob.glob('output_*/info*')
     files.sort()
 
     path = os.path.join(folder, 'snapshots')
     _mkdir(path)
 
-    istart=0
+    ToPlot = [False] * len(files)
     if hnum != None:
-        t = trees.Forest()
-        hid = int(t.trees[(t.trees.halo_ts == t.trees.halo_ts.max())
-                      & (t.trees.halo_num == hnum)].halo_id)
-        prog_id = [_ for _ in t.get_main_progenitor(hid).halo_num]
-        prog_id = prog_id[::-1]
-        istart=len(files) - len(prog_id)
-        files=files[istart:]
-
-        path = os.path.join(path, 'Halo%s' %hnum)
-        _mkdir(path)
-
-    if bhid != None:
-        path = os.path.join(path, 'BH%s' % bhid)
-        _mkdir(path)
-        s = sink.Sinks()
+        t = trees.Forest(Galaxy=Galaxy)
+        prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
+        if snap != -1:
+            snap=np.intersect1d(prog.halo_ts, snap)
+        if Galaxy:
+            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep)) 
+        else:
+            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(hnum, timestep)) 
+        _mkdir(path) 
+    
+    if bhid != None: 
+        path = os.path.join(path, 'BH%s' % bhid) 
+        _mkdir(path) 
+        print('Loading sink file to determine outputs to show')
+        s = sink.Sinks(ID=[bhid])
         tform = s.sink[bhid].t.min()
         tmerge = s.sink[bhid].t.max()
-        imin = 0
-        imax = 0
-        for f in files:
+        snapbh=[]
+        for isnap,f in enumerate(files):
             ds = yt.load(f)
-            print(ds.current_time.in_units('Gyr'))
-            if ds.current_time < ds.arr(tform, 'Gyr'):
-                imin += 1
-            if ds.current_time > ds.arr(tmerge, 'Gyr'):
-                imax -= 1
-        if imax == 0:
-            files = files[imin:]
+            if (ds.current_time > ds.arr(tform, 'Gyr')) & (ds.current_time < ds.arr(tmerge, 'Gyr')):
+                snapbh += [isnap+1]
+        if snap != -1:
+            snap=np.intersect1d(snapbh, snap)
         else:
-            files = files[imin:imax]
-        istart=imin
+            snap = snapbh
+    
+    if snap != -1:
+        for i in snap:
+            ToPlot[i-1] = True
 
     if slice:
         path = os.path.join(path, 'Slice')
@@ -114,50 +114,40 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     _mkdir(path)
     path = os.path.join(path, 'Axis_%s' % axis)
     _mkdir(path)
-
-    if snap != -1:
-        files = [files[i-istart-1] for i in snap]
-        if hnum != None:
-            prog_id = [prog_id[i-istart-1] for i in snap]
+    if LogScale:
+        path = os.path.join(path, 'LogScale')
+    else:
+        path = os.path.join(path, 'LinScale')
+    _mkdir(path)
     
     if sinkdynamics > 0:
             s=sink.Sinks()
 
     width_input = width
     for fn in yt.parallel_objects(files):
-        if (('stars' in field[1]) or ('dm' in field[1])):
-            ds = yt.load(fn, extra_particle_fields=[("particle_age", "d"),("particle_metallicity", "d")])
-        else:
-            ds = yt.load(fn)
-        i = files.index(fn)
-
-        if 'stars' in field[1]:
-            yt.add_particle_filter(
-                "stars", function=fields.stars, filtered_type="io",
-                requires=["particle_age"])
-            ds.add_particle_filter("stars")
-        if 'dm' in field[1]:
-            yt.add_particle_filter(
-                "dm", function=fields.dm, filtered_type="io")
-            ds.add_particle_filter("dm")
-
+      i = files.index(fn)
+      if ToPlot[i]:
         c = center
-
         if hnum != None:
-            h = halos.HaloList(ds)
-            hid = prog_id[i]
-            hh = h.halos.loc[hid]
-            c = [h.halos['x'][hid], h.halos['y'][hid], h.halos['z'][hid]]
-            if width_input == 'Rvir':
-                width = (2*h.halos['rvir'][hid]*1000, 'kpc')
+            h = prog.loc[prog.halo_ts == i+1]
+            hid = h.halo_num.item()
+        else:
+            hid = None
+        ds = load_snap.load(fn, stars=True, dm=True, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width)
 
         if bhid != None:
             ds.sink = sink.get_sinks(ds)
             bh = ds.sink.loc[ds.sink.ID == bhid]
             c = [bh.x.item(), bh.y.item(), bh.z.item()]
 
-        sp = ds.sphere(c, width)
+        if hnum != None:
+            h = halos.HaloList(ds)
+            c = [h.halos['x'][hid], h.halos['y'][hid], h.halos['z'][hid]]
+            if width_input == 'Rvir':
+                width = (2*h.halos['rvir'][hid]*1000, 'kpc')
 
+        sp = ds.sphere(c, width)
+    
         if slice:
             p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
         else:
@@ -202,10 +192,6 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             h = halos.HaloList(ds)
             hds = h.halos
 
-            # mask = (((c[0] - hds.x)**2 + (c[1] - hds.y)**2 + (c[2] - hds.z)**2) < \
-            #        (sp.radius.in_units('code_length') / 2)**2) & \
-            #        hds.m > masshalomin
-
             for hid in hds.index:
                 ch = hds.loc[hid]
                 w = ds.arr(width[0], width[1])
@@ -227,8 +213,10 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
         if axis_units == None:
             p.annotate_scale(corner='upper_right')
+            p.hide_axes()
         else:
-            p.annotate_scale(corner='upper_right', unit=axis_units, draw_inset_box=True)
+            p.annotate_scale(corner='upper_right', draw_inset_box=True)
+            p.set_axes_unit(axis_units)
         p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
 
         p.set_cmap(field=field, cmap=cmap)
@@ -238,16 +226,14 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             p.set_unit(field=field, new_unit=cbarunits)
         if cbarbounds !=None:
             p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
-            if LogScale:
-                p.set_log(field, log=True)
+        p.set_log(field, log=False)
+        if LogScale:
+            p.set_log(field, log=True)
 
-        if axis_units == None:
-            p.hide_axes()
-        else:
-            p.set_axes_unit(axis_units)
         p.set_width(width)
 
-        p.save(path)
+        p.save(path+'/'+str(ds)+'.pdf')
+        yt.funcs.mylog.setLevel(20)
     return
 
 
@@ -256,7 +242,8 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         n_bins=128, log=True,
         qtty=[('gas','density'),('deposit','stars_cic'),('deposit','dm_cic')],
         weight_field=('index','cell_volume'), bin_fields=('index', 'radius'),
-        hnum=None, bhid=None, accumulation=False, snap=-1, filter=None):
+        hnum=None, bhid=None, Galaxy=False, timestep=None,
+        accumulation=False, snap=-1, filter=None):
     """
     This routine plot the profile for all snapshots
 
@@ -282,93 +269,81 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
     snap : list of snapshots to profile
     """
 
+    yt.funcs.mylog.setLevel(40)
     files = glob.glob('output_*/info*')
     files.sort()
 
     path=folder + '/profiles'
     os.system('mkdir ' + path)
 
-    istart=0
+    ToPlot = [False] * len(files)
     if hnum != None:
-      if hnum > 0:
-        t = trees.Forest()
-        hid = int(t.trees[(t.trees.halo_ts == t.trees.halo_ts.max())
-                      & (t.trees.halo_num == hnum)].halo_id)
-        prog_id = [_ for _ in t.get_main_progenitor(hid).halo_num]
-        prog_id = prog_id[::-1]
-        istart=len(files) - len(prog_id)
-        files=files[istart:]
+        t = trees.Forest(Galaxy=Galaxy)
+        prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
+        if snap != -1:
+            snap=np.intersect1d(prog.halo_ts, snap)
+        else:
+            snap = list(prog.halo_ts)
+        if Galaxy:
+            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep)) 
+        else:
+            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(hnum, timestep)) 
+        _mkdir(path) 
 
-        path = path + '/Halo' + str(hnum)
-        os.system('mkdir ' + path)
+    if bhid != None: 
+        path = os.path.join(path, 'BH%s' % bhid) 
+        _mkdir(path) 
+        print('Loading sink file to determine outputs to show')
+        s = sink.Sinks(ID=[bhid])
+        tform = s.sink[bhid].t.min()
+        tmerge = s.sink[bhid].t.max()
+        snapbh=[]
+        for isnap,f in enumerate(files):
+            ds = yt.load(f)
+            if (ds.current_time > ds.arr(tform, 'Gyr')) & (ds.current_time < ds.arr(tmerge, 'Gyr')):
+                snapbh += [isnap+1]
+                ToPlot[isnap-1] = True
+        if snap != -1:
+            snap=np.intersect1d(snapbh, snap)
+        else:
+            snap = snapbh
 
-    if bhid != None:
-        path = path + '/BH' + str(bhid)
-        os.system('mkdir ' + path)
-        s=sink.Sinks()
-        tform=s.sink[bhid].t.min()
-        imin=0
-        for f in files:
-            ds=yt.load(f)
-            if ds.current_time < ds.arr(tform, 'Gyr'):
-                imin+=1
-        files=files[imin:]
+    if snap != -1:
+        ToPlot = [False] * len(files)
+        for i in snap:
+            ToPlot[i-1] = True
 
     path = path + '/'
     for f in qtty:
-        path = path + f[0]+f[1]
+        path = path + f[0]+f[1]+'+'
     os.system('mkdir ' + path)
     path = path + '/'
     path = path + bin_fields[0] + bin_fields[1] 
     os.system('mkdir ' + path)
 
-    if snap != -1:
-        files = [files[i-istart-1] for i in snap]
-        if hnum != None:
-            prog_id = [prog_id[i-istart-1] for i in snap]
-
     part=False
     for field in qtty:
         if (('stars' in field[1]) or ('dm' in field[1])):
             part=True 
-
     for fn in yt.parallel_objects(files):
-        plt.clf()
-        if part: 
-            ds = yt.load(fn, extra_particle_fields=[("particle_age", "d"),("particle_metallicity", "d")])
-        else:
-            ds = yt.load(fn)
-        i = files.index(fn)
-        
-        for field in qtty:
-          if 'stars' in field[1]:
-            yt.add_particle_filter(
-                "stars", function=fields.stars, filtered_type="io",
-                requires=["particle_age"])
-            ds.add_particle_filter("stars")
-          if 'dm' in field[1]:
-            yt.add_particle_filter(
-                "dm", function=fields.dm, filtered_type="io")
-            ds.add_particle_filter("dm")
-        
+      plt.clf()
+      i = files.index(fn)
+      if ToPlot[i]: 
+        c = center
         if hnum != None:
-            if hnum == -1:
-                GalCen = pd.read_csv('GalCenter.csv')
-                GalCen = GalCen.loc[i]
-                center = [GalCen.cx, GalCen.cy, GalCen.cz]
-                hid = None
-            else:
-                h = halos.HaloList(ds)
-                hid = prog_id[i]
+            h = prog.loc[prog.halo_ts == i+1]
+            hid = h.halo_num.item()
         else:
             hid = None
+        ds = load_snap.load(i+1, stars=True, dm=True, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=rbound[1])
 
         p=analysis.profiles(ds, center=center,
             rbound=rbound, n_bins=n_bins,
             log=log,
             qtty=qtty,
             weight_field=weight_field, bin_fields=bin_fields,
-            hnum=hid, bhid=bhid, accumulation=accumulation, filter=filter)
+            hnum=hid, bhid=bhid, accumulation=accumulation, filter=filter,
+            Galaxy=Galaxy)
 
         for field in qtty:
             plt.plot(p.x.in_units(rbound[0][1]),
@@ -390,5 +365,6 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
 
         plt.savefig(path+'/profile{:03}'.format(i+1))
         plt.clf()
+        yt.funcs.mylog.setLevel(20)
     return
 
