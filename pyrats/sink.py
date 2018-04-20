@@ -155,6 +155,7 @@ class Sinks(object):
                 return 
             else:
                 IDhalos=len(bhid)*[-1]
+                timestep = 0
 
         j=-1
         for i in tqdm(tmp):
