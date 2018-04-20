@@ -104,7 +104,7 @@ def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=
         h = sinks.loc[sinks.ID == bhID]
         center=np.copy([h.x.item(),h.y.item(),h.z.item()])
         if radius == None:
-            print('Please specify a radius (10, \'kpc\') for the region')
+            print('Please specify a radius, i.e. (10, \'kpc\') for the region')
         else:
             w=float(ds.arr(radius[0], radius[1]).in_units('code_length'))
         bbox=[center-w, center+w] 
