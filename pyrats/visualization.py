@@ -69,6 +69,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
         if snap != -1:
             snap=np.intersect1d(prog.halo_ts, snap)
+        else:
+            snap = list(prog.halo_ts)
         if Galaxy:
             path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep)) 
         else:
@@ -124,6 +126,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             s=sink.Sinks()
 
     width_input = width
+    print(ToPlot)
     for fn in yt.parallel_objects(files):
       i = files.index(fn)
       if ToPlot[i]:
@@ -141,10 +144,13 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             c = [bh.x.item(), bh.y.item(), bh.z.item()]
 
         if hnum != None:
-            h = halos.HaloList(ds)
-            c = [h.halos['x'][hid], h.halos['y'][hid], h.halos['z'][hid]]
-            if width_input == 'Rvir':
-                width = (2*h.halos['rvir'][hid]*1000, 'kpc')
+            if Galaxy:
+                h=ds.gal.gal.loc[hid]
+            else:
+                h = ds.halo.halos.loc[hid]
+            c = [h.x, h.y, h.z]
+         #   if width_input == 'Rvir':
+         #       width = (2*h.rvir'][hid]*1000, 'kpc')
 
         sp = ds.sphere(c, width)
     
@@ -278,6 +284,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
 
     ToPlot = [False] * len(files)
     if hnum != None:
+      if hnum > 0:
         t = trees.Forest(Galaxy=Galaxy)
         prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
         if snap != -1:
@@ -288,7 +295,13 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
             path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep)) 
         else:
             path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(hnum, timestep)) 
-        _mkdir(path) 
+      else:
+        if snap == -1:
+            snap = range(1, len(files)+1)
+        path = os.path.join(path, 'Galaxy')
+        
+      _mkdir(path)
+
 
     if bhid != None: 
         path = os.path.join(path, 'BH%s' % bhid) 

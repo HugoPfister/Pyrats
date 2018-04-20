@@ -48,6 +48,12 @@ def profiles(ds, center=[0.5,0.5,0.5],
         else:
             h = ds.halo.halos.loc[hnum]
         c = [h.x.item(), h.y.item(), h.z.item()]
+      else:
+            print('Considering ideal simulation, GalCenter.csv must be present')
+            Gal=pd.read_csv('GalCenter.csv')
+            arg = np.abs(Gal.t - float(ds.current_time.in_units('Gyr'))).argmin()
+            h = Gal.loc[arg]
+            c = [h.cx.item(), h.cy.item(), h.cz.item()]
 
     if bhid != None:
         bh = ds.sink.loc[ds.sink.ID == bhid]
