@@ -125,7 +125,7 @@ class Sinks(object):
         return
 
     def plot_sink_dynamics(self, bhid=[0], loc='./', IDhalos=[0], Galaxy=False, timestep=None,
-                limrho=None, limv=None, limf=None, limt=None,logDist=True):
+                limrho=None, limv=None, limf=None, limt=None,logDist=True, average=5):
         """
         Show on a same PDF distance, surrounding gas/stars/dm density, relative velocity and magnitude
         of the drag force
@@ -133,9 +133,12 @@ class Sinks(object):
         bhid : list of BHs to analyse, [0] is all
         loc : folder where to save the pdf
         IDhalos : list of halos to give to pyrats.analysis.dist_sink_to_halo
+        Galaxy : if true, consider ID of galaxies instead of halos
+        timestep : timestep at which consider halos/galaxies
         limrho v f : y limits for the plot
         logDist : force log plot or not for the distance
-
+        average (5 Myr default) : window (in Myr) to average rho / v / a
+        
         """
         files=glob.glob('output_*/info*')
         ds=yt.load(files[0])
@@ -163,8 +166,9 @@ class Sinks(object):
             plt.clf()
             sink = self.sink[i + 1]
 
-            if len(sink.t) > 1000:
-                sink=sink.loc[::len(sink.t)//1000]
+            dt_mean = np.diff(sink.t).mean()
+            n_av = int(average // (dt_mean*1000))
+            n_max = len(sink.t) // n_av *n_av-1
 
             plt.figure()
             plt.subplot(221)
@@ -181,7 +185,7 @@ class Sinks(object):
             plt.plot([t[0].min()],[d[0].min()], color='green', label='Stars')
             plt.plot([t[0].min()],[d[0].min()], color='orange', label='DM')
             plt.legend(loc='best')
-            plt.xlabel('Age of the universe [Gyr]')
+            #plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('D$_\\mathrm{halo}$ [kpc]')
             if Galaxy:
                 plt.ylabel('D$_\\mathrm{galaxy}$ [kpc]')
@@ -189,21 +193,42 @@ class Sinks(object):
                 plt.xlim(limt[0], limt[1])
 
             plt.subplot(222)
-            plt.semilogy(sink.t, sink.rho, label='Gas density')
-            plt.semilogy(sink.t, sink.rho_stars, label='Stellar density', color='g')
-            plt.semilogy(sink.t, sink.rho_dm, label='DM density', color='orange')
-            plt.xlabel('Age of the universe [Gyr]')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.rho.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                label='Gas density')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.rho_stars.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                label='Stellar density (total)', color='g', linestyle='--')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.rho_lowspeed_stars.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                label='Stellar density (low speed)', color='g')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.rho_dm.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                label='DM density (total)', color='orange', linestyle='--')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.rho_lowspeed_dm.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                label='DM density (low speed)', color='orange')
+            #plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('$\\rho$ [part cc$^{-1}$]')
+            #plt.legend()
             if limrho is not None:
                 plt.ylim(limrho[0], limrho[1])
             if limt is not None:
                 plt.xlim(limt[0], limt[1])
 
             plt.subplot(223)
-            plt.semilogy(sink.t, sink.dv, label='$\Delta$v gas', alpha=0.8)
-            plt.semilogy(sink.t, sink.vsink_rel_stars, label='$\\Delta$v$_\\star$', alpha=0.8, color='green')
-            plt.semilogy(sink.t, sink.vsink_rel_dm, label='$\\Delta$v$_\\mathrm{DM}$', alpha=0.8, color='orange')
-            
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.dv.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                label='$\Delta$v gas')
+            #plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+            #    (np.array(sink.cs.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+            #    label='$c_s$', color='red')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.vsink_rel_stars.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                label='$\\Delta$v$_\\star$', color='g')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.vsink_rel_dm.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                label='$\\Delta$v$_\\mathrm{DM}$', color='orange')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('v [km s$^{-1}$]')
             if limv is not None:
@@ -213,12 +238,21 @@ class Sinks(object):
 
             plt.subplot(224)
 
-            plt.semilogy(sink.t, sink.a_gas, label='Gas')
-            plt.semilogy(sink.t, sink.a_stars_slow, label='Stars slow', alpha=0.8, color='green')
-            plt.semilogy(sink.t, sink.a_dm_slow, alpha=0.8, color='orange', label='DM slow')
-            plt.semilogy(sink.t, np.copy(sink.a_stars_fast), linestyle =':', color='green', alpha=1)
-            plt.semilogy(sink.t, np.copy(sink.a_stars_fast), linestyle =':', color='green', alpha=1)
-            plt.semilogy(sink.t, np.copy(sink.a_dm_fast), alpha=1, linestyle=':', color='orange')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.a_gas.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                )
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.a_stars_slow.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                color='g')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.a_stars_fast.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                color='lightgreen')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.a_dm_slow.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                color='orange')
+            plt.semilogy((np.array(sink.t.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                (np.array(sink.a_dm_fast.loc[:n_max]).reshape(-1, n_av)).mean(-1),
+                color='red')
             plt.xlabel('Age of the universe [Gyr]')
             plt.ylabel('|$\\vec{a}$| [km/s Myr$^{-1}$]')
             plt.suptitle('BH #{:03}'.format(i+1)+' Halo #{:04} in output_{:05}'.format(IDhalos[j], timestep))
