@@ -5,6 +5,7 @@ import os
 import subprocess
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 
 from . import halos, trees, sink, fields, analysis, load_snap
 
@@ -22,7 +23,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    hnum=None, timestep=None, Galaxy=False, bhid=None, 
                    plothalos=False, masshalomin=1e10,
                    plotsinks=False, plotparticles=False, sinkdynamics=0,
-                   snap=-1):
+                   snap=[-1]):
     """
     Visualization function, by default it is applied to ALL snapshots
 
@@ -63,14 +64,17 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     path = os.path.join(folder, 'snapshots')
     _mkdir(path)
 
-    ToPlot = [False] * len(files)
+    ToPlot = [True] * len(files)
+
+    if snap != [-1]:
+        for i in range(len(files)):
+            ToPlot[i] = ((i+1) in snap)
+
     if hnum != None:
         t = trees.Forest(Galaxy=Galaxy)
         prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
-        if snap != -1:
-            snap=np.intersect1d(prog.halo_ts, snap)
-        else:
-            snap = list(prog.halo_ts)
+        for i in range(len(files)):
+            ToPlot[i] = (ToPlot[i]) & (i+1 in prog.halo_ts)
         if Galaxy:
             path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep)) 
         else:
@@ -87,16 +91,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         snapbh=[]
         for isnap,f in enumerate(files):
             ds = yt.load(f)
-            if (ds.current_time > ds.arr(tform, 'Gyr')) & (ds.current_time < ds.arr(tmerge, 'Gyr')):
-                snapbh += [isnap+1]
-        if snap != -1:
-            snap=np.intersect1d(snapbh, snap)
-        else:
-            snap = snapbh
-    
-    if snap != -1:
-        for i in snap:
-            ToPlot[i-1] = True
+            ToPlot[isnap] = (ToPlot[isnap]) & ((ds.current_time >= ds.arr(tform, 'Gyr')) & (ds.current_time <= ds.arr(tmerge, 'Gyr')))
 
     if slice:
         path = os.path.join(path, 'Slice')
@@ -282,27 +277,23 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
     path=folder + '/profiles'
     os.system('mkdir ' + path)
 
-    ToPlot = [False] * len(files)
+    ToPlot = [True] * len(files)
+
+    if snap != [-1]:
+        for i in range(len(files)):
+            ToPlot[i] = ((i+1) in snap)
+
     if hnum != None:
-      if hnum > 0:
         t = trees.Forest(Galaxy=Galaxy)
         prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
-        if snap != -1:
-            snap=np.intersect1d(prog.halo_ts, snap)
-        else:
-            snap = list(prog.halo_ts)
+        for i in range(len(files)):
+            ToPlot[i] = (ToPlot[i]) & (i+1 in prog.halo_ts)
         if Galaxy:
             path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep)) 
         else:
             path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(hnum, timestep)) 
-      else:
-        if snap == -1:
-            snap = range(1, len(files)+1)
-        path = os.path.join(path, 'Galaxy')
-        
-      _mkdir(path)
-
-
+        _mkdir(path) 
+    
     if bhid != None: 
         path = os.path.join(path, 'BH%s' % bhid) 
         _mkdir(path) 
@@ -313,18 +304,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         snapbh=[]
         for isnap,f in enumerate(files):
             ds = yt.load(f)
-            if (ds.current_time > ds.arr(tform, 'Gyr')) & (ds.current_time < ds.arr(tmerge, 'Gyr')):
-                snapbh += [isnap+1]
-                ToPlot[isnap-1] = True
-        if snap != -1:
-            snap=np.intersect1d(snapbh, snap)
-        else:
-            snap = snapbh
-
-    if snap != -1:
-        ToPlot = [False] * len(files)
-        for i in snap:
-            ToPlot[i-1] = True
+            ToPlot[isnap] = (ToPlot[isnap]) & ((ds.current_time >= ds.arr(tform, 'Gyr')) & (ds.current_time <= ds.arr(tmerge, 'Gyr')))
 
     path = path + '/'
     for f in qtty:
