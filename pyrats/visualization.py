@@ -74,7 +74,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         t = trees.Forest(Galaxy=Galaxy)
         prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
         for i in range(len(files)):
-            ToPlot[i] = (ToPlot[i]) & (i+1 in prog.halo_ts)
+            ToPlot[i] = (ToPlot[i]) & (i+1 in np.array(prog.halo_ts))
         if Galaxy:
             path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep)) 
         else:
@@ -131,6 +131,10 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             hid = h.halo_num.item()
         else:
             hid = None
+        print(hid)
+        print(Galaxy)
+        print(bhid)
+        print(width)
         ds = load_snap.load(fn, stars=True, dm=True, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width)
 
         if bhid != None:
@@ -244,7 +248,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         qtty=[('gas','density'),('deposit','stars_cic'),('deposit','dm_cic')],
         weight_field=('index','cell_volume'), bin_fields=('index', 'radius'),
         hnum=None, bhid=None, Galaxy=False, timestep=None,
-        accumulation=False, snap=-1, filter=None):
+        accumulation=False, snap=[-1], filter=None):
     """
     This routine plot the profile for all snapshots
 

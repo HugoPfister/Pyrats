@@ -8,6 +8,7 @@ import pandas as pd
 import os as os
 
 from . import halos, fields, visualization, utils, physics, sink, analysis, load_snap, galaxies
+import yt.utilities.physical_constants as constants
 
 
 def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=None, Galaxy=False, bhID=None, radius=None):

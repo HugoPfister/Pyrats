@@ -14,10 +14,10 @@ from tqdm import tqdm
 import yt
 import glob as glob
 import os as os
-from yt.utilities.lib.cosmology_time import get_ramses_ages
 from scipy.interpolate import interp1d
-
+from yt.frontends.ramses.io import convert_ramses_ages
 from . import analysis 
+
 class Sinks(object):
     """
     Read the sinks outputs from RAMSES and put them in a PandaFrame
@@ -50,6 +50,16 @@ class Sinks(object):
             j+=1
 
         return
+
+    def distance(self, bhID1, bhID2):
+        bh1 = self.sink[bhID1]
+        bh2 = self.sink[bhID2]
+
+        print('CARE, HAS TO BE TESTED IN COSMO SIMS')
+        d = np.sqrt((bh1.x-bh2.x)**2 +
+                 (bh1.y-bh2.y)**2 +
+                 (bh1.z-bh2.z)**2)
+        return d
 
     def plot_sink_accretion(self, bhid=0, loc='./', limM=None,
                             limrho=None, limv=None, limdM=None):
@@ -289,13 +299,8 @@ def get_sinks(ds):
             (ds.arr(1, 'code_mass/code_time').in_units('Msun/yr'))
         if ds.cosmological_simulation==1:
             sink.age = np.copy(
-            ds.arr(get_ramses_ages(
-                ds.t_frw, ds.tau_frw, ds.dtau,
-                ds.time_simu,
-                1. / (ds.hubble_constant * 100 * 1e5 / 3.08e24)
-                / ds['unit_t'],
-                ds['time'] - np.copy(sink.age),
-                ds.n_frw / 2, len(sink.age)), 'code_time').in_units('Myr'))
+                ds.arr(convert_ramses_ages(
+                ds ,np.copy(sink.age))))
         else:
             sink.age =sink.age*ds.arr(1,'code_time').in_units('Myr')
         sink.vx = sink.vx * (ds.arr(1, 'code_velocity').in_units('km / s'))

@@ -30,7 +30,7 @@ def dm(pfilter, data):
      else:
          filter= (data['io','particle_identifier'] >0)
     else:
-         filter = ((data['io','particle_birth_time'] == 0 ) & (data['io','particle_identifier'] > 0))
+         filter = ((data['io','particle_birth_time'] == 0 ) & (data['io','particle_identity'] > 0))
     return filter
 
 
