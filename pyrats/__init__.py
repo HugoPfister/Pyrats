@@ -11,7 +11,7 @@ from . import halos, fields, visualization, utils, physics, sink, analysis, load
 import yt.utilities.physical_constants as constants
 
 
-def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=None, Galaxy=False, bhID=None, radius=None):
+def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False, bhID=None, radius=None, stars=False, dm=False):
     """
     Load a RAMSES output
     CARE : fields depend on the version of ramses
@@ -24,6 +24,6 @@ def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=
     *radius: in the form (10, 'kpc') is the size of the region kept for the dataset
     """
     
-    ds = load_snap.load(files=files, stars=stars, dm=dm, MatchObjects=MatchObjects, bbox=bbox, haloID=haloID, Galaxy=Galaxy, bhID=bhID, radius=radius)
+    ds = load_snap.load(files=files, MatchObjects=MatchObjects, bbox=bbox, haloID=haloID, Galaxy=Galaxy, bhID=bhID, radius=radius, stars=stars, dm=dm)
      
     return ds

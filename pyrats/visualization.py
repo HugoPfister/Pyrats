@@ -121,7 +121,6 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             s=sink.Sinks()
 
     width_input = width
-    print(ToPlot)
     for fn in yt.parallel_objects(files):
       i = files.index(fn)
       if ToPlot[i]:
@@ -131,12 +130,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             hid = h.halo_num.item()
         else:
             hid = None
-        print(hid)
-        print(Galaxy)
-        print(bhid)
-        print(width)
-        ds = load_snap.load(fn, stars=True, dm=True, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width)
-
+        ds = load_snap.load(fn, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width)
+        print('snap load')
         if bhid != None:
             ds.sink = sink.get_sinks(ds)
             bh = ds.sink.loc[ds.sink.ID == bhid]
@@ -153,12 +148,21 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
         sp = ds.sphere(c, width)
     
+        print('filter done')
         if slice:
             p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
         else:
+            print(ds)
+            print(sp)
+            print(axis)
+            print(field)
+            print(weight_field)
+            print(sp.center)
+            print(width)
             p= yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
                  center=sp.center, width=width)
 
+        print('image done')
         if plotsinks:
             ds.sink = sink.get_sinks(ds)
             for bhnum in ds.sink.ID:

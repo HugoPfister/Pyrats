@@ -7,7 +7,7 @@ import os as os
 from . import halos, fields, visualization, utils, physics, sink, analysis, load_snap, galaxies
 
 
-def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=None, Galaxy=False, bhID=None, radius=None):
+def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False, bhID=None, radius=None, stars=False, dm=False):
     """
     Read __init_.load function for infos
     """
@@ -70,8 +70,9 @@ def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=
                 sinks.loc[bhid, 'mhalo'] = h.m.item() 
                 sinks.loc[bhid, 'hid'] = hid 
                 bhid = sinks.loc[bhid].M.argmax()
+                bhid = sinks.loc[bhid].ID
                 halo.halos.loc[hid, 'bhid'] = bhid
-                halo.halos.loc[hid, 'msink'] = sinks.loc[bhid].M.item()
+                halo.halos.loc[hid, 'msink'] = sinks.loc[sinks.ID == bhid].M.item()
         
         mylog.info('Matching sinks to galaxies')
         #match sinks to galaxies
@@ -85,8 +86,9 @@ def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=
                 sinks.loc[bhid, 'mbulge'] = g.mbulge.item()
                 sinks.loc[bhid, 'sigma_bulge'] = g.sigma_bulge.item()
                 bhid = sinks.loc[bhid].M.argmax()
+                bhid = sinks.loc[bhid].ID
                 gal.gal.loc[galID, 'bhid'] = bhid
-                gal.gal.loc[galID, 'msink'] = sinks.loc[bhid].M.item()
+                gal.gal.loc[galID, 'msink'] = sinks.loc[sinks.ID == bhid].M.item()
 
     #Load only the relevant part of the simulation
     if (haloID != None):
@@ -109,25 +111,27 @@ def load(files='', stars=False, dm=False, MatchObjects=False, bbox=None, haloID=
             w=float(ds.arr(radius[0], radius[1]).in_units('code_length'))
         bbox=[center-w, center+w] 
     
+    #ds = yt.load(files, bbox=bbox)
+    
     if (stars or dm):
         ds = yt.load(files, extra_particle_fields=[("particle_birth_time", "d"),("particle_metallicity", "d")], bbox=bbox)
     else:
         ds = yt.load(files, bbox=bbox)
-    
+
     ds.halo = halo
     ds.gal  = gal
     ds.sink = sinks
 
     if stars:
-        mylog.info('Filtering stars')
-        yt.add_particle_filter("stars", function=fields.stars,
-                               filtered_type="io")
-        ds.add_particle_filter("stars")
+                mylog.info('Filtering stars')
+                yt.add_particle_filter("stars", function=fields.stars,
+                    filtered_type="io")
+                ds.add_particle_filter("stars")
 
     if dm:
-        mylog.info('Filtering dark matter')
-        yt.add_particle_filter("dm", function=fields.dm,
-                                filtered_type="io")
-        ds.add_particle_filter("dm")
+                mylog.info('Filtering dark matter')
+                yt.add_particle_filter("dm", function=fields.dm,
+                    filtered_type="io")
+                ds.add_particle_filter("dm")
 
     return ds
