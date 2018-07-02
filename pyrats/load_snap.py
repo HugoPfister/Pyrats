@@ -60,7 +60,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False, bhI
             if len(galID) != 0:
                 gal.gal.loc[galID, 'mhalo'] = h.m.item() 
                 gal.gal.loc[galID, 'hid'] = hid 
-                galID = gal.gal.loc[galID].m.argmax()
+                galID = gal.gal.loc[galID].m.idxmax()
                 halo.halos.loc[hid, 'galID'] = galID
                 halo.halos.loc[hid, 'mgal'] = gal.gal.loc[galID].m.item()
 
@@ -69,7 +69,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False, bhI
             if len(bhid != 0):
                 sinks.loc[bhid, 'mhalo'] = h.m.item() 
                 sinks.loc[bhid, 'hid'] = hid 
-                bhid = sinks.loc[bhid].M.argmax()
+                bhid = sinks.loc[bhid].M.idxmax()
                 bhid = sinks.loc[bhid].ID
                 halo.halos.loc[hid, 'bhid'] = bhid
                 halo.halos.loc[hid, 'msink'] = sinks.loc[sinks.ID == bhid].M.item()
@@ -85,7 +85,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False, bhI
                 sinks.loc[bhid, 'galID'] = galID
                 sinks.loc[bhid, 'mbulge'] = g.mbulge.item()
                 sinks.loc[bhid, 'sigma_bulge'] = g.sigma_bulge.item()
-                bhid = sinks.loc[bhid].M.argmax()
+                bhid = sinks.loc[bhid].M.idxmax()
                 bhid = sinks.loc[bhid].ID
                 gal.gal.loc[galID, 'bhid'] = bhid
                 gal.gal.loc[galID, 'msink'] = sinks.loc[sinks.ID == bhid].M.item()
