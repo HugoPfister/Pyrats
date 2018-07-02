@@ -5,19 +5,13 @@ import yt
 import numpy as np
 import os as os
 
-cic_levelmax = 10
-
-
-
 props=['M','x','y','z','vx','vy','vz','jx_g','jy_g','jz_g','dMB','dME','dM','rho','cs','dv','Esave','jx_bh','jy_bh','jz_bh','spinmag','eps_sink', 'rho_stars', 'rho_dm',  'vx_stars', 'vy_stars', 'vz_stars', 'vx_dm', 'vy_dm', 'vz_dm', 'n_stars', 'n_dm', 'rho_lowspeed_stars', 'rho_lowspeed_dm', 'fact_fast_stars', 'fact_fast_dm']
 
 os.system('mkdir sinks')
 os.system('mv sink_* ./sinks')
-if os.path.exists('./sinks/BH00001.csv'):
-    os.system('rm ./sinks/BH*')
 
 files=glob.glob('output_*/info*')
-ds=yt.load(files[0])
+ds=yt.load(files[-1])
 
 df={tmpprop:[] for tmpprop in props}
 df=pd.DataFrame(data=df)
@@ -29,8 +23,9 @@ else:
 files=glob.glob('./sinks/sink*')
 files.sort()
 
-dx=float(ds.length_unit.in_units('pc')/2**ds.max_level*(1+ds.current_redshift))
-dx_dm=float(ds.length_unit.in_units('pc')/2**cic_levelmax*(1+ds.current_redshift))
+d=ds.all_data()
+dx=float(d[('index','dx')].min().in_units('pc'))
+dx_dm=float(ds.length_unit.in_units('pc')/2**ds.max_level*(1+ds.current_redshift))
 
 for f in files:
     p=ff.FortranFile(f)
@@ -40,9 +35,10 @@ for f in files:
     scale_d=p.read_reals('d')
     scale_t=p.read_reals('d')
     bhid=p.read_ints()
-    d={tmpprop:p.read_reals('d') for tmpprop in props[:-14]}
+    d={tmpprop:p.read_reals('d') for tmpprop in props[:30]}
     d=pd.DataFrame(data=d, index=bhid)
-    d = pd.concat([d, pd.DataFrame(data={tmpprop:p.read_reals('d') for tmpprop in props[-14:]}, index=bhid)], axis=1)
+    d = pd.concat([d, pd.DataFrame(data={tmpprop:p.read_ints() for tmpprop in props[30:32]}, index=bhid)], axis=1)
+    d = pd.concat([d, pd.DataFrame(data={tmpprop:p.read_reals('d') for tmpprop in props[32:]}, index=bhid)], axis=1)
     t=list(p.read_reals('d'))
 
     d['M']*=scale_d*scale_l**3/2e33
@@ -131,9 +127,13 @@ for bhid in df.index:
     fudge.loc[M > 1.007] = 1/M**2*(0.5*np.log(M**2-1) + 3.2)
     tmp['a_gas']=4*np.pi*(6.67e-8)**2*tmp.M*2e33*tmp.rho*1.67e-24/(tmp.cs*1e5)**2*fudge*(3600*24*365*1e6)/1e5*CoulombLog
 
+    if os.path.exists('./sinks/BH00001.csv'):
+        os.system('rm ./sinks/BH{:05}'.format(bhid)+'.csv')
     tmp.to_csv('./sinks/BH{:05}'.format(bhid)+'.csv', index=False)
 
 tmp={tmpprop:[] for tmpprop in props}
 tmp.update({'a':[],'t':[]})
 tmp=pd.DataFrame(data=tmp)
+if os.path.exists('./sinks/BH00001.csv'):
+    os.system('rm ./sinks/BH00000.csv')
 tmp.to_csv('./sinks/BH00000.csv', index=False)
