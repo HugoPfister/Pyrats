@@ -20,7 +20,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
     yt.funcs.mylog.setLevel(20)
     ids = int(str(ds).split('_')[1])
 
-    #read csv file for sinks
+    # read csv file for sinks
     mylog.info('Reading sinks')
     sinks = sink.get_sinks(ds)
 
@@ -30,20 +30,20 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
     if not halo_ok & ds.cosmological_simulation == 1:
         mylog.warning('Could not find any Halo directory. Tried %s' % p)
 
-    #load halos and galaxies
+    # load halos and galaxies
     mylog.info('Reading halos and galaxies')
     halo = halos.HaloList(ds, folder=hp, contam=False)
     gal = galaxies.GalList(ds, folder=hp, contam=False)
     halo.halos['pollution'] = 0
-    #read purity of halos
+    # read purity of halos
     if os.path.exists('./Halos/'+str(ids)+'/contam_halos{:03}'.format(ids)):
-        p=np.loadtxt('./Halos/'+str(ids)+'/contam_halos{:03}'.format(ids))
+        p = np.loadtxt('./Halos/'+str(ids)+'/contam_halos{:03}'.format(ids))
         if len(p) > 0:
             p = p.T
             halo.halos.loc[p[0], 'pollution'] = p[1]/p[2]
 
     sinks['hid'] = -1 ; sinks['galID'] = -1
-    sinks['mgal'] = 0 ; sinks['mbulge'] = 0 ;
+    sinks['mgal'] = 0 ; sinks['mbulge'] = 0
     sinks['sigma_bulge'] = 0 ; sinks['mhalo'] = 0
     halo.halos['bhid'] = -1 ; halo.halos['galID'] = -1
     halo.halos['mgal'] = 0 ; halo.halos['msink'] = 0
@@ -75,7 +75,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
                 halo.halos.loc[hid, 'msink'] = sinks.loc[sinks.ID == bhid].M.item()
 
         mylog.info('Matching sinks to galaxies')
-        #match sinks to galaxies
+        # match sinks to galaxies
         for galID in gal.gal.sort_values('level').index:
             g = gal.gal.loc[galID]
             d = np.sqrt((g.x.item() - sinks.x)**2 + (g.y.item() - sinks.y)** 2 + (g.z.item() - sinks.z)**2)
@@ -90,31 +90,31 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
                 gal.gal.loc[galID, 'bhid'] = bhid
                 gal.gal.loc[galID, 'msink'] = sinks.loc[sinks.ID == bhid].M.item()
 
-    #Load only the relevant part of the simulation
-    if (haloID != None):
+    # Load only the relevant part of the simulation
+    if haloID is not None:
         if Galaxy:
-            h=gal.gal.loc[haloID]
+            h = gal.gal.loc[haloID]
         else:
-            h=halo.halos.loc[haloID]
-        center=np.copy([h.x,h.y,h.z])
-        w=2*h.r/float(ds.length_unit.in_units('Mpc'))
-        if radius != None:
-            w=float(ds.arr(radius[0]*2, radius[1]).in_units('code_length'))
-        bbox=[center-w, center+w]
+            h = halo.halos.loc[haloID]
+        center = np.copy([h.x, h.y, h.z])
+        w = 2*h.r/float(ds.length_unit.in_units('Mpc'))
+        if radius is not None:
+            w = float(ds.arr(radius[0]*2, radius[1]).in_units('code_length'))
+        bbox = [center-w, center+w]
 
-    if (bhID != None):
+    if bhID is not None:
         h = sinks.loc[sinks.ID == bhID]
-        center=np.copy([h.x.item(),h.y.item(),h.z.item()])
-        if radius == None:
+        center = np.copy([h.x.item(), h.y.item(), h.z.item()])
+        if radius is None:
             print('Please specify a radius, i.e. (10, \'kpc\') for the region')
         else:
-            w=float(ds.arr(radius[0], radius[1]).in_units('code_length'))
-        bbox=[center-w, center+w]
+            w = float(ds.arr(radius[0], radius[1]).in_units('code_length'))
+        bbox = [center-w, center+w]
 
-    #ds = yt.load(files, bbox=bbox)
-
-    if (stars or dm):
-        ds = yt.load(files, extra_particle_fields=[("particle_birth_time", "d"),("particle_metallicity", "d")], bbox=bbox)
+    if stars or dm:
+        ds = yt.load(files, extra_particle_fields=[("particle_birth_time", "d"),
+                                                   ("particle_metallicity", "d")],
+                     bbox=bbox)
     else:
         ds = yt.load(files, bbox=bbox)
 
@@ -125,13 +125,13 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
     if stars:
                 mylog.info('Filtering stars')
                 yt.add_particle_filter("stars", function=fields.stars,
-                    filtered_type="io")
+                                       filtered_type="io")
                 ds.add_particle_filter("stars")
 
     if dm:
                 mylog.info('Filtering dark matter')
                 yt.add_particle_filter("dm", function=fields.dm,
-                    filtered_type="io")
+                                       filtered_type="io")
                 ds.add_particle_filter("dm")
 
     return ds
