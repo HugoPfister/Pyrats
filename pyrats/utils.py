@@ -7,6 +7,8 @@ TODO:
 """
 from scipy.io import FortranFile as FF
 import numpy as np
+from glob import glob
+import os
 
 # Classes stuff
 class ImplementError(Exception):
@@ -85,3 +87,15 @@ def read_cooling(ds):
         cool['spec'] = cf.read_reals(np.float64).reshape((n1, n2, 6), order='F')
 
     return cool
+
+
+def find_outputs(path='.'):
+    pattern = os.path.join('output_?????')
+
+    outputs = []
+    for d in sorted(glob(pattern)):
+        iout = d.split('_')[-1]
+        full_path = os.path.join(d, 'info_%s' % iout)
+        outputs.append(full_path)
+
+    return outputs

@@ -27,6 +27,7 @@ import os
 import yt.utilities.fortran_utils as fpu
 
 from . import physics
+from .utils import find_outputs
 
 
 class Forest(object):
@@ -41,9 +42,7 @@ class Forest(object):
     """
 
     def __init__(self, Galaxy=False):
-
-        paths = glob('output*/info*')
-        paths.sort()
+        paths = find_outputs()
         yt.funcs.mylog.setLevel(40)
         ds = yt.load(paths[-1])
         yt.funcs.mylog.setLevel(20)
