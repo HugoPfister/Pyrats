@@ -102,7 +102,6 @@ class Forest(object):
             self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
         self.trees['y'] = self.trees['y'] * self.sim['Lbox'] / float(
             self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
-
         self.trees['z'] = self.trees['z'] * self.sim['Lbox'] / float(
             self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
 

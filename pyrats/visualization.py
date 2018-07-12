@@ -20,10 +20,10 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    weight_field=('index','ones'), slice=False,
                    width=(10, 'kpc'), axis_units='kpc', folder='./',
                    cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
-                   hnum=None, timestep=None, Galaxy=False, bhid=None, 
+                   hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e10,
                    plotsinks=False, plotparticles=False, sinkdynamics=0,
-                   snap=[-1]):
+                   snap=[-1], extension='pdf'):
     """
     Visualization function, by default it is applied to ALL snapshots
 
@@ -57,9 +57,14 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     snap : list of snapshots you want to show, default ALL (-1)
     """
 
-    yt.funcs.mylog.setLevel(40)
-    files = glob.glob('output_*/info*')
-    files.sort()
+    # yt.funcs.mylog.setLevel(40)
+    pattern = os.path.join(folder, 'output_?????')
+    dirs = glob.glob(pattern)
+    files = []
+    dirs.sort()
+    for d in dirs:
+        iout = d.split('_')[-1]
+        files.append(os.path.join(d, 'info_%s.txt' % iout))
 
     path = os.path.join(folder, 'snapshots')
     _mkdir(path)
@@ -70,28 +75,30 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         for i in range(len(files)):
             ToPlot[i] = ((i+1) in snap)
 
-    if hnum != None:
+    if hnum is not None:
         t = trees.Forest(Galaxy=Galaxy)
         prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
         for i in range(len(files)):
             ToPlot[i] = (ToPlot[i]) & (i+1 in np.array(prog.halo_ts))
         if Galaxy:
-            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep)) 
+            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(
+                hnum, timestep))
         else:
-            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(hnum, timestep)) 
-        _mkdir(path) 
-    
-    if bhid != None: 
-        path = os.path.join(path, 'BH%s' % bhid) 
-        _mkdir(path) 
-        print('Loading sink file to determine outputs to show')
+            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(
+                hnum, timestep))
+        _mkdir(path)
+
+    if bhid is not None:
+        path = os.path.join(path, 'BH%s' % bhid)
+        _mkdir(path)
         s = sink.Sinks(ID=[bhid])
         tform = s.sink[bhid].t.min()
         tmerge = s.sink[bhid].t.max()
-        snapbh=[]
-        for isnap,f in enumerate(files):
+        for isnap, f in enumerate(files):
             ds = yt.load(f)
-            ToPlot[isnap] = (ToPlot[isnap]) & ((ds.current_time >= ds.arr(tform, 'Gyr')) & (ds.current_time <= ds.arr(tmerge, 'Gyr')))
+            ToPlot[isnap] = (ToPlot[isnap] &
+                             ((ds.current_time >= ds.arr(tform, 'Gyr')) &
+                              (ds.current_time <= ds.arr(tmerge, 'Gyr'))))
 
     if slice:
         path = os.path.join(path, 'Slice')
@@ -100,11 +107,11 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         path = os.path.join(path, 'Proj')
         _mkdir(path)
 
-    if width != None:
+    if width is not None:
         if width == 'Rvir':
-            path = os.path.join(path,'rvir')
+            path = os.path.join(path, 'rvir')
         else:
-            path = os.path.join(path,'%s%s' % (width[0], width[1]))
+            path = os.path.join(path, '%s%s' % (width[0], width[1]))
         _mkdir(path)
 
     path = os.path.join(path, '%s%s' % (field[0], field[1]))
@@ -116,123 +123,121 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     else:
         path = os.path.join(path, 'LinScale')
     _mkdir(path)
-    
+
     if sinkdynamics > 0:
-            s=sink.Sinks()
+        s = sink.Sinks()
 
-    width_input = width
     for fn in yt.parallel_objects(files):
-      i = files.index(fn)
-      if ToPlot[i]:
-        c = center
-        if hnum != None:
-            h = prog.loc[prog.halo_ts == i+1]
-            hid = h.halo_num.item()
-        else:
-            hid = None
-        ds = load_snap.load(fn, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width)
-        if bhid != None:
-            ds.sink = sink.get_sinks(ds)
-            bh = ds.sink.loc[ds.sink.ID == bhid]
-            c = [bh.x.item(), bh.y.item(), bh.z.item()]
-
-        if hnum != None:
-            if Galaxy:
-                h=ds.gal.gal.loc[hid]
+        i = files.index(fn)
+        if ToPlot[i]:
+            c = center
+            if hnum is not None:
+                h = prog.loc[prog.halo_ts == i+1]
+                hid = h.halo_num.item()
             else:
-                h = ds.halo.halos.loc[hid]
-            c = [h.x, h.y, h.z]
-         #   if width_input == 'Rvir':
-         #       width = (2*h.rvir'][hid]*1000, 'kpc')
+                hid = None
+            ds = load_snap.load(fn, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width)
+            if bhid is not None:
+                bh = ds.sink.loc[ds.sink.ID == bhid]
+                c = [bh.x.item(), bh.y.item(), bh.z.item()]
 
-        sp = ds.sphere(c, width)
-    
-        if slice:
-            p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
-        else:
-            p= yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
-                 center=sp.center, width=width)
+            if hnum is not None:
+                if Galaxy:
+                    h = ds.gal.gal.loc[hid]
+                else:
+                    h = ds.halo.halos.loc[hid]
+                c = [h.x, h.y, h.z]
 
-        if plotsinks:
-            ds.sink = sink.get_sinks(ds)
-            for bhnum in ds.sink.ID:
-                ch = ds.sink.loc[ds.sink.ID == bhnum]
-                if (((c[0] - ch.x.item())**2 +
-                    (c[1] - ch.y.item())**2 +
-                    (c[2] - ch.z.item())**2) <
-                    ((sp.radius.in_units('code_length') / 2)**2)):
+            sp = ds.sphere(c, width)
 
-                    p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
-                                  marker='.', plot_args={'color':
-                                  'black', 's': 100})
+            if slice:
+                p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
+            else:
+                p = yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
+                                      center=sp.center, width=width)
 
-                    p.annotate_text([ch.x.item(), ch.y.item(), ch.z.item()],
-                                text=str(ch.ID.item()),
-                                text_args={'color': 'black'},
-                                inset_box_args={'alpha': 0.0}
-                    )
+            if plotsinks:
+                for bhnum in ds.sink.ID:
+                    ch = ds.sink.loc[ds.sink.ID == bhnum]
+                    if (((c[0] - ch.x.item())**2 +
+                        (c[1] - ch.y.item())**2 +
+                        (c[2] - ch.z.item())**2) <
+                        ((sp.radius.in_units('code_length') / 2)**2)):
 
-                    if sinkdynamics > 0:
-                        ch=s.sink[bhnum]
-                        ch = ch.loc[
-                         (ch.t>float((ds.current_time-
-                            ds.arr(sinkdynamics, 'Myr')).in_units('Gyr'))) &
-                         (ch.t<float((ds.current_time+
-                            ds.arr(sinkdynamics, 'Myr')).in_units('Gyr')))]
-                        x=list(ch.x)
-                        y=list(ch.y)
-                        z=list(ch.z)
-                        for i in range(len(x)-1):
-                            p.annotate_line([x[i],y[i],z[i]],
-                                [x[i+1],y[i+1],z[i+1]],
-                                coord_system='data', plot_args={'color':'black'})
+                        p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
+                                          marker='.', plot_args={
+                                              'color': 'black', 's': 100})
 
-        if plothalos:
-            h = halos.HaloList(ds)
-            hds = h.halos
+                        p.annotate_text(
+                            [ch.x.item(), ch.y.item(), ch.z.item()],
+                            text=str(ch.ID.item()),
+                            text_args={'color': 'black'},
+                            inset_box_args={'alpha': 0.0}
+                        )
 
-            for hid in hds.index:
-                ch = hds.loc[hid]
-                w = ds.arr(width[0], width[1])
-                if ((ch.m > masshalomin) &
-                    (((c[0] - ch.x.item())**2 +
-                      (c[1] - ch.y.item())**2 +
-                      (c[2] - ch.z.item())**2) <
-                     ((w.in_units('code_length') / 2)**2))):
+                        if sinkdynamics > 0:
+                            ch=s.sink[bhnum]
+                            ch = ch.loc[
+                             (ch.t>float((ds.current_time-
+                                ds.arr(sinkdynamics, 'Myr')).in_units('Gyr'))) &
+                             (ch.t<float((ds.current_time+
+                                ds.arr(sinkdynamics, 'Myr')).in_units('Gyr')))]
+                            x=list(ch.x)
+                            y=list(ch.y)
+                            z=list(ch.z)
+                            for i in range(len(x)-1):
+                                p.annotate_line([x[i],y[i],z[i]],
+                                    [x[i+1],y[i+1],z[i+1]],
+                                    coord_system='data', plot_args={'color':'black'})
 
-                    p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
-                                      (ch.rvir.item(), 'Mpc'),
-                                      circle_args={'color': 'black'})
+            if plothalos:
+                h = halos.HaloList(ds)
+                hds = h.halos
 
-                    p.annotate_text([ch.x.item(), ch.y.item(),
-                                     ch.z.item()], text='%s' % hid)
+                for hid in hds.index:
+                    ch = hds.loc[hid]
+                    w = ds.arr(width[0], width[1])
+                    if ((ch.m > masshalomin) &
+                        (((c[0] - ch.x.item())**2 +
+                          (c[1] - ch.y.item())**2 +
+                          (c[2] - ch.z.item())**2) <
+                         ((w.in_units('code_length') / 2)**2))):
 
-        if plotparticles:
-            p.annotate_particles(width)
+                        p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
+                                          (ch.rvir.item(), 'Mpc'),
+                                          circle_args={'color': 'black'})
 
-        if axis_units == None:
-            p.annotate_scale(corner='upper_right')
-            p.hide_axes()
-        else:
-            p.annotate_scale(corner='upper_right', draw_inset_box=True)
-            p.set_axes_unit(axis_units)
-        p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
+                        p.annotate_text([ch.x.item(), ch.y.item(),
+                                         ch.z.item()], text='%s' % hid)
 
-        p.set_cmap(field=field, cmap=cmap)
-        if cbarunits == None:
-            p.hide_colorbar()
-        else:
-            p.set_unit(field=field, new_unit=cbarunits)
-        if cbarbounds !=None:
-            p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
-        p.set_log(field, log=False)
-        if LogScale:
-            p.set_log(field, log=True)
+            if plotparticles:
+                p.annotate_particles(width)
 
-        p.set_width(width)
+            if axis_units is None:
+                p.annotate_scale(corner='upper_right')
+                p.hide_axes()
+            else:
+                p.annotate_scale(corner='upper_right', draw_inset_box=True)
+                p.set_axes_unit(axis_units)
+            p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
 
-        p.save(path+'/'+str(ds)+'.pdf')
-        yt.funcs.mylog.setLevel(20)
+            p.set_cmap(field=field, cmap=cmap)
+            if cbarunits is None:
+                p.hide_colorbar()
+            else:
+                p.set_unit(field=field, new_unit=cbarunits)
+            if cbarbounds is not None:
+                p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
+            p.set_log(field, log=False)
+            if LogScale:
+                p.set_log(field, log=True)
+
+            p.set_background_color(field)
+
+            p.set_width(width)
+
+            p.save(path+'/'+str(ds)+'.'+extension)
+        # yt.funcs.mylog.setLevel(20)
     return
 
 
@@ -287,14 +292,14 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         for i in range(len(files)):
             ToPlot[i] = (ToPlot[i]) & (i+1 in prog.halo_ts)
         if Galaxy:
-            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep)) 
+            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep))
         else:
-            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(hnum, timestep)) 
-        _mkdir(path) 
-    
-    if bhid != None: 
-        path = os.path.join(path, 'BH%s' % bhid) 
-        _mkdir(path) 
+            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(hnum, timestep))
+        _mkdir(path)
+
+    if bhid != None:
+        path = os.path.join(path, 'BH%s' % bhid)
+        _mkdir(path)
         print('Loading sink file to determine outputs to show')
         s = sink.Sinks(ID=[bhid])
         tform = s.sink[bhid].t.min()
@@ -309,17 +314,17 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         path = path + f[0]+f[1]+'+'
     os.system('mkdir ' + path)
     path = path + '/'
-    path = path + bin_fields[0] + bin_fields[1] 
+    path = path + bin_fields[0] + bin_fields[1]
     os.system('mkdir ' + path)
 
     part=False
     for field in qtty:
         if (('stars' in field[1]) or ('dm' in field[1])):
-            part=True 
+            part=True
     for fn in yt.parallel_objects(files):
       plt.clf()
       i = files.index(fn)
-      if ToPlot[i]: 
+      if ToPlot[i]:
         c = center
         if hnum != None:
             h = prog.loc[prog.halo_ts == i+1]
