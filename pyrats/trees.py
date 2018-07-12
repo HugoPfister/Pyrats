@@ -15,21 +15,18 @@ TODO:
 """
 import matplotlib
 #matplotlib.use('PDF')
-from matplotlib import cm
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.io import FortranFile as FF
-from time import sleep
 from tqdm import tqdm
-import numpy as np
 import yt
 from glob import glob
 import os
 import yt.utilities.fortran_utils as fpu
 
-from . import physics, halos, utils
+from . import physics
 
 
 class Forest(object):
@@ -44,7 +41,6 @@ class Forest(object):
     """
 
     def __init__(self, Galaxy=False):
-                 # sim={'Lbox': 10.0, 'h': 0.6711, 'Om': 0.3175, 'Ol': 0.6825}):
 
         paths = glob('output*/info*')
         paths.sort()
@@ -73,12 +69,11 @@ class Forest(object):
         self.outputs = paths[-int(self.trees.halo_ts.max()):]
         step_first_gal = len(paths) - self.trees.halo_ts.max()
         self.trees.halo_ts += step_first_gal
-            
 
     def read_tree(self):
         """
         """
-        
+
         if self.galaxies:
             tree_file = '{}/tree.dat'.format(self.folder)
             self = self._read_treeStars(tree_file)
@@ -97,7 +92,7 @@ class Forest(object):
 
         st = self.trees['halo_ts'] - 1
         aexp = np.array([self.timestep['aexp'][int(i)] for i in st])
-        
+
         self.trees['x'] = self.trees['x'] * self.sim['Lbox'] / float(
             self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
         self.trees['y'] = self.trees['y'] * self.sim['Lbox'] / float(
@@ -110,7 +105,7 @@ class Forest(object):
     def get_all_progenitors(self, hnum, timestep=None):
         """Return the reduced tree containing ONLY the progenitors of halo hid
         ==========
-        * hid: ID of the halo at output timestep given by the halo/galaxy finder 
+        * hid: ID of the halo at output timestep given by the halo/galaxy finder
         * timestep (None): timestep at which the ID must be taken, default is last timestep
         """
 
@@ -125,15 +120,15 @@ class Forest(object):
     def get_main_progenitor(self, hnum, timestep=None):
         """Return the reduced tree containing ONLY the main progenitors of halo hid
         ==========
-        * hid: ID of the halo at output timestep given by the halo/galaxy finder 
+        * hid: ID of the halo at output timestep given by the halo/galaxy finder
         * timestep (None): timestep at which the ID must be taken, default is last timestep
         """
         id_main = {}
-        if timestep == None:
+        if timestep is None:
             ts = self.trees.halo_ts.max()
         else:
             ts = timestep
-        
+
         if self.galaxies:
             progenitors = self.trees.loc[(self.trees.halo_num == hnum) & (self.trees.halo_ts == ts)]
             if len(progenitors) == 0:
@@ -166,11 +161,11 @@ class Forest(object):
     def get_main_children(tree, hnum, timestep=None):
         """Return the reduced tree containing ONLY the main children of halo hid
         ==========
-        * hid: ID of the halo at output timestep given by the halo/galaxy finder 
+        * hid: ID of the halo at output timestep given by the halo/galaxy finder
         * timestep (None): timestep at which the ID must be taken, default is last timestep
         """
         # Get current timestep
-        if timestep == None:
+        if timestep is None:
             cts = tree.halo_ts.max()
         else:
             cts = timestep
@@ -192,22 +187,22 @@ class Forest(object):
             hid = tree.trees.loc[(tree.trees.halo_ts == cts) & (tree.trees.halo_num == hnum)].index.item()
             all_id = []
             for ts in range(cts, tree.trees.halo_ts.max()+1):
-                all_id += [hid] 
+                all_id += [hid]
                 # Get most massive one
                 hid = tree.trees.loc[hid].descendent_id
 
-            children = tree.trees.loc[all_id] 
+            children = tree.trees.loc[all_id]
 
         return children
 
     def get_family(tree, hnum, timestep=None):
         """Return the reduced tree containing ONLY the main progenitors/children of halo hid
         ==========
-        * hid: ID of the halo at output timestep given by the halo/galaxy finder 
+        * hid: ID of the halo at output timestep given by the halo/galaxy finder
         * timestep (None): timestep at which the ID must be taken, default is last timestep
         """
         # Get current timestep
-        if timestep == None:
+        if timestep is None:
             ts = tree.trees.halo_ts.max()
         else:
             ts = timestep
@@ -218,9 +213,7 @@ class Forest(object):
         family = pd.concat((child, fathers))
         family = family.sort_values(by=['halo_ts'])
 
-        return family 
-
-
+        return family
 
     def plot_all_trees(self, minmass=-1, maxmass=1e99, radius=1.0,
                        output=None, loc='./'):
@@ -733,7 +726,7 @@ class Forest(object):
                     for fatherID in progenitors.fathersID.item():
                         progenitors = pd.concat([progenitors, self._get_progenitors(fatherID, timestep-1)])
                     return progenitors
-            
+
         else:
             target = self.trees.loc[(self.trees.halo_num == hid) & (self.trees.halo_ts == timestep)].index
             print(target)
@@ -743,10 +736,13 @@ class Forest(object):
             progenitors = self.trees.loc[mask].copy()
             return progenitors
 
-
     def _read_treeStars(self, tree_file):
-        Key_tree = ['halo_num', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id', 'm', 'dmacc', 'x','y','z', 'vx','vy','vz', 'Lx','Ly','Lz', 'r', 'a','b','c', 'ek','ep','et', 'spin', 'rvir', 'mvir', 'tvir', 'cvel', 'fathersID', 'fatherMass', 'sonsID']
-        
+        Key_tree = (
+            'halo_num', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id', 'm',
+            'dmacc', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly', 'Lz', 'r',
+            'a', 'b', 'c', 'ek', 'ep', 'et', 'spin', 'rvir', 'mvir', 'tvir',
+            'cvel', 'fathersID', 'fatherMass', 'sonsID')
+
         with open(tree_file, 'rb') as F:
 
             self.timestep = {}
@@ -760,25 +756,25 @@ class Forest(object):
 
             data = np.empty(shape=(n_halo_tot.sum(), len(Key_tree)), dtype=object)
 
-            j=0
-            for istep in  range(self.timestep['nsteps']):
+            j = 0
+            for istep in range(self.timestep['nsteps']):
                 for ihalo in range(n_halo_tot[istep]+n_halo_tot[istep+self.timestep['nsteps']]):
                     [ID] = fpu.read_vector(F, 'i')
                     [BushID] = fpu.read_vector(F, 'i')
                     [timestep] = fpu.read_vector(F, 'i')
                     [level, hosthaloID, hostsubID, nbsub, nextsub] = fpu.read_vector(F, 'i')
                     [m] = fpu.read_vector(F, 'f')
-                    [dmacc] = fpu.read_vector(F, 'd') 
-                    [x,y,z] = fpu.read_vector(F, 'f')
-                    [vx,vy,vz] = fpu.read_vector(F, 'f')
-                    [Lx,Ly,Lz] = fpu.read_vector(F, 'f')
-                    [r,a,b,c] = fpu.read_vector(F, 'f')
+                    [dmacc] = fpu.read_vector(F, 'd')
+                    [x, y, z] = fpu.read_vector(F, 'f')
+                    [vx, vy, vz] = fpu.read_vector(F, 'f')
+                    [Lx, Ly, Lz] = fpu.read_vector(F, 'f')
+                    [r, a, b, c] = fpu.read_vector(F, 'f')
                     [ek, ep, et] = fpu.read_vector(F, 'f')
                     [spin] = fpu.read_vector(F, 'f')
                     [nbfather] = fpu.read_vector(F, 'i')
                     if nbfather == 0:
                         fatherID = []
-                        fatherMass = [] 
+                        fatherMass = []
                     else:
                         fatherID = fpu.read_vector(F, 'i')
                         fatherMass = fpu.read_vector(F, 'f')
@@ -789,26 +785,26 @@ class Forest(object):
                         sonsID = fpu.read_vector(F, 'i')
                     [rvir, mvir, tvir, cvel] = fpu.read_vector(F, 'f')
                     [rho_0, r_c] = fpu.read_vector(F, 'f')
-                    ncont = fpu.read_vector(F, 'i')
+                    fpu.read_vector(F, 'i')  # ncont
 
-                    data[j] = [ID, timestep, level, hosthaloID, hostsubID, m, dmacc, x, y, z, vx, vy, vz, Lx, Ly, Lz, r, a, b, c, ek, ep, et, spin, rvir, mvir, tvir, cvel, fatherID, fatherMass, sonsID]
+                    data[j] = (ID, timestep, level, hosthaloID, hostsubID, m,
+                               dmacc, x, y, z, vx, vy, vz, Lx, Ly, Lz, r, a, b,
+                               c, ek, ep, et, spin, rvir, mvir, tvir, cvel,
+                               fatherID, fatherMass, sonsID)
                     j += 1
-        
-        types = {}
-        for k in ('ID', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id', 'fathersID', 'sonsID'):
-            types[k] = np.int64
-        for k in ('m', 'dmacc', 'x','y','z', 'vx','vy','vz', 'Lx','Ly','Lz', 'r', 'a','b','c', 'ek','ep','et', 'spin', 'rvir', 'mvir', 'tvir', 'cvel', 'FatherMass'):
-            types[k] = np.float64
-        #dd = {k: data[:, i].astype(types[k])
+
+        # types = {}
+        # for k in ('ID', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id',
+        #           'fathersID', 'sonsID'):
+        #     types[k] = np.int64
+        # for k in ('m', 'dmacc', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly',
+        #           'Lz', 'r', 'a', 'b', 'c', 'ek', 'ep', 'et', 'spin', 'rvir',
+        #           'mvir', 'tvir', 'cvel', 'FatherMass'):
+        #     types[k] = np.float64
+
         dd = {k: data[:, i]
               for i, k in enumerate(Key_tree)}
 
-        self.trees = pd.DataFrame(dd) 
+        self.trees = pd.DataFrame(dd)
 
         return self
-
-
-
-
-
-
