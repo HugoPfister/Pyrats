@@ -31,7 +31,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
         mylog.warning('Could not find any Halo directory. Tried %s' % p)
 
     # load halos and galaxies
-    mylog.info('Reading halos and galaxies')
+    mylog.info('Reading halos and galaxies' )
     halo = halos.HaloList(ds, folder=hp, contam=False)
     gal = galaxies.GalList(ds, folder=hp, contam=False)
     halo.halos['pollution'] = 0

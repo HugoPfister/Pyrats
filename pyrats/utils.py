@@ -95,7 +95,7 @@ def find_outputs(path='.'):
     outputs = []
     for d in sorted(glob(pattern)):
         iout = d.split('_')[-1]
-        full_path = os.path.join(d, 'info_%s' % iout)
+        full_path = os.path.join(d, 'info_%s.txt' % iout)
         outputs.append(full_path)
 
     return outputs

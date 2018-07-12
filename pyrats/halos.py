@@ -136,8 +136,8 @@ class HaloList(object):
         filename = '{s.folder}/Halos/{s.iout}/tree_bricks{s.iout:03d}'.format(
             s=self)
 
-        
         data = np.empty(shape=(0, len(halo_keys)), dtype=object)
+        yt.funcs.mylog.debug('Reading halo catalog %s (ds=%s)' % (filename, data_set))
         if os.path.exists(filename):
             with open(filename, 'rb') as f:
                 [npart] = fpu.read_vector(f, 'i')
@@ -162,20 +162,20 @@ class HaloList(object):
 
                 pbar = get_pbar('', nhalos+nsubs)
                 for ihalo in range(nhalos + nsubs):
-                    [nbpart] = fpu.read_vector(f, 'i')  # Number of particles
-                    listp = fpu.read_vector(f, 'i')  # List of the particles IDs
-                    [ID] = fpu.read_vector(f, 'i')  # Halo ID
-                    fpu.skip(f, 1) # Skip timestep
+                    [nbpart] = fpu.read_vector(f, 'i')                 # Number of particles
+                    listp = fpu.read_vector(f, 'i')                    # List of the particles IDs
+                    [ID] = fpu.read_vector(f, 'i')                     # Halo ID
+                    fpu.skip(f, 1)                                     # Skip timestep
                     [level, host, hostsub, nbsub, nextsub] = fpu.read_vector(f, 'i')
-                    [m] = fpu.read_vector(f, 'f')  # Total mass
-                    [x, y, z] = fpu.read_vector(f, 'f')  # Center
-                    [vx, vy, vz] = fpu.read_vector(f, 'f')  # Velocity
-                    [Lx, Ly, Lz] = fpu.read_vector(f, 'f')  # Angular momentum
-                    [r, a, b, c] = fpu.read_vector(f, 'f')  # Shape (ellipticity)
-                    [ek, ep, et] = fpu.read_vector(f, 'f')  # Energetics
-                    [spin] = fpu.read_vector(f, 'f')  # Total angular momentum
-                    [rvir, mvir, tvir, cvel] = fpu.read_vector(f, 'f')  # Virial parameters
-                    [rho0, r_c] = fpu.read_vector(f, 'f')  # ?
+                    [m] = fpu.read_vector(f, 'f')                      # Total mass
+                    [x, y, z] = fpu.read_vector(f, 'f')                # Center
+                    [vx, vy, vz] = fpu.read_vector(f, 'f')             # Velocity
+                    [Lx, Ly, Lz] = fpu.read_vector(f, 'f')             # Angular momentum
+                    [r, a, b, c] = fpu.read_vector(f, 'f')             # Shape (ellipticity)
+                    [ek, ep, et] = fpu.read_vector(f, 'f')             # Energetics
+                    [spin] = fpu.read_vector(f, 'f')                   # Total angular momentum
+                    [rvir, mvir, tvir, cvel] = fpu.read_vector(f, 'f') # Virial parameters
+                    [rho0, r_c] = fpu.read_vector(f, 'f')              # NFW params
 
                     if with_contam_option:
                         [contam] = fpu.read_vector(f, 'i')  # Contamination

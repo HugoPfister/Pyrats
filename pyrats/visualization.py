@@ -13,7 +13,7 @@ def _mkdir(path):
         pass
 
 def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
-                   field=('deposit','all_density'),
+                   field=('gas', 'density'),
                    weight_field=('index','ones'), slice=False,
                    width=(10, 'kpc'), axis_units='kpc', folder='./',
                    cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
@@ -55,13 +55,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     """
 
     # yt.funcs.mylog.setLevel(40)
-    dirs = utils.find_output()
-    files = []
-    dirs.sort()
-    for d in dirs:
-        iout = d.split('_')[-1]
-        files.append(os.path.join(d, 'info_%s.txt' % iout))
-
+    files = utils.find_outputs()
     path = os.path.join(folder, 'snapshots')
     _mkdir(path)
 

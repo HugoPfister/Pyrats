@@ -59,15 +59,17 @@ class Forest(object):
             treefolder = './TreeStars/'
             self.galaxies = True
 
+        self.treefolder = treefolder
         self.sim = _sim
         self.ds = ds
         self.folder = treefolder
         self.snap = self._get_timestep_number()
 
         self.read_tree()
+        # Find outputs given halo_ts
         self.outputs = paths[-int(self.trees.halo_ts.max()):]
-        step_first_gal = len(paths) - self.trees.halo_ts.max()
-        self.trees.halo_ts += step_first_gal
+        # step_first_gal = len(paths) - self.trees.halo_ts.max()
+        # self.trees.halo_ts += step_first_gal
 
     def read_tree(self):
         """
@@ -89,8 +91,9 @@ class Forest(object):
             self.prop.set_index(self.struct.halo_id, inplace=True)
             self.trees = pd.concat([self.prop, self.struct], axis=1)
 
-        st = self.trees['halo_ts'] - 1
-        aexp = np.array([self.timestep['aexp'][int(i)] for i in st])
+        # Create halo_ts from the step in the tree
+        self.trees['halo_ts'] = self.map_halo_ts_to_output(self.trees.tree_step)
+        aexp = self.timestep['aexp'][self.trees.tree_step.astype('int64')-1]
 
         self.trees['x'] = self.trees['x'] * self.sim['Lbox'] / float(
             self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
@@ -100,6 +103,17 @@ class Forest(object):
             self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
 
         return
+
+    def map_halo_ts_to_output(self, timestep):
+        timestep = timestep.astype('int64')
+        bricks = sorted(glob(os.path.join(self.treefolder, 'tree_bricks???')))
+        mapping = np.empty(timestep.max(), dtype=np.int64)
+        for istep, brick in enumerate(bricks):
+            ioutput = int(brick.split('bricks')[1])
+            mapping[istep] = ioutput
+
+        return mapping[timestep-1]
+
 
     def get_all_progenitors(self, hnum, timestep=None):
         """Return the reduced tree containing ONLY the progenitors of halo hid
@@ -680,21 +694,21 @@ class Forest(object):
                     age=age_univ)
 
     def _read_tree_struct(self, tfile):
-        ID_keys = ('bush_id', 'tree_id', 'halo_id', 'halo_num', 'halo_ts',
+        ID_keys = ('bush_id', 'tree_id', 'halo_id', 'halo_num', 'tree_step',
                    'first_prog', 'next_prog', 'descendent_id', 'last_prog',
                    'host_halo_id', 'host_sub_id', 'next_sub_id')
-        IDs = pd.DataFrame(columns=ID_keys)
+        data = []
         with FF(tfile, 'r') as t:
-            [nsteps, nIDs, nIndex] = t.read_ints()
+            nsteps, nIDs, nIndex = t.read_ints()
             nhalos = t.read_ints()
 
             for ts in range(nsteps):
                 if nhalos[ts] > 0:
                     IDs_raw = t.read_ints(np.int64).reshape((nhalos[ts], nIDs))
                     id_df = pd.DataFrame(IDs_raw, columns=ID_keys)
-                    IDs = pd.concat((IDs, id_df))
+                    data.append(id_df)
                     t.read_ints()  # Skip indexes
-        return IDs
+        return pd.concat(data)
 
     def _read_halo_props(self, pfile):
         p_keys = ('x', 'y', 'z', 'vx', 'vy', 'vz', 'm', 'r', 'spin',
@@ -737,7 +751,7 @@ class Forest(object):
 
     def _read_treeStars(self, tree_file):
         Key_tree = (
-            'halo_num', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id', 'm',
+            'halo_num', 'tree_step', 'level', 'host_halo_id', 'host_sub_id', 'm',
             'dmacc', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly', 'Lz', 'r',
             'a', 'b', 'c', 'ek', 'ep', 'et', 'spin', 'rvir', 'mvir', 'tvir',
             'cvel', 'fathersID', 'fatherMass', 'sonsID')
