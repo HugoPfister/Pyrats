@@ -1,13 +1,10 @@
 import yt
 import glob
-from tqdm import tqdm
 import os
-import subprocess
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
 
-from . import halos, trees, sink, fields, analysis, load_snap
+from . import halos, trees, sink, analysis, load_snap, utils
 
 def _mkdir(path):
     try:
@@ -58,8 +55,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     """
 
     # yt.funcs.mylog.setLevel(40)
-    pattern = os.path.join(folder, 'output_?????')
-    dirs = glob.glob(pattern)
+    dirs = utils.find_output()
     files = []
     dirs.sort()
     for d in dirs:
@@ -274,7 +270,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
     """
 
     yt.funcs.mylog.setLevel(40)
-    files = glob.glob('output_*/info*')
+    files = utils.find_outputs()
     files.sort()
 
     path=folder + '/profiles'
