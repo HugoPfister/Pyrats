@@ -109,15 +109,14 @@ def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
                 xh = interp1d(Gal.t, (Gal.cx-0.5)*Lbox, kind='cubic')
                 yh = interp1d(Gal.t, (Gal.cy-0.5)*Lbox, kind='cubic')
                 zh = interp1d(Gal.t, (Gal.cz-0.5)*Lbox, kind='cubic')
-                tmin = max(Gal.t.min(), bh.t.min())
-                tmax = min(Gal.t.max(), bh.t.max())
+                tmin = max(Gal.t.min(),  bh.t.min())
+                tmax = min(Gal.t.max(),  bh.t.max())
 
         if hid > 0:
             FirstOutput = tree.trees.halo_ts.min()
             prog = tree.get_family(hid, timestep=timestep)
             #prog = tree.get_main_progenitor(hid, timestep=timestep)
             prog['halo_ts'] -= FirstOutput
-            prog = prog.loc[prog.halo_ts < 45]
 
             xh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.x*1000, kind='cubic')
             yh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.y*1000, kind='cubic')
