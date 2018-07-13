@@ -1,8 +1,8 @@
 from . import halos, fields, visualization, utils, physics, sink, analysis, \
-    load_snap, snaplist, trees
+    load_snap, trees
 
 __all__ = ['halos', 'utils', 'trees', 'visualization',
-           'fields', 'physics', 'snaplist', 'sink', 'analysis']
+           'fields', 'physics', 'sink', 'analysis']
 
 
 def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
