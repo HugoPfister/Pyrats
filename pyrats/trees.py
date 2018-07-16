@@ -154,10 +154,6 @@ class Forest(object):
                     fathersID = progenitors.fathersID.item()[fathers]
                     fatherID = progenitors.fatherMass.item()[fathers].argmax()
                     fatherID = fathersID[fatherID]
-                    #fathers = pd.concat([self.trees.loc[(self.trees.halo_num == fatherID) & (self.trees.halo_ts == ts-1)] for fatherID in progenitors.fathersID.item()])
-                    #fathers = fathers.loc[fathers.m == fathers.m.max()]
-                    print('working on ts = {:}'.format(ts))
-                    print('current halo is {:} with father {:}'.format(hnum, fatherID))
                     progenitors = pd.concat([progenitors, self.get_main_progenitor(fatherID, ts-1)])
                     return progenitors
 
