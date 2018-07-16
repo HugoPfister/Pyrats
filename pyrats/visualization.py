@@ -117,6 +117,9 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     if sinkdynamics > 0:
         s = sink.Sinks()
 
+    part=False
+    if (('stars' in field[1]) or ('dm' in field[1])): part=True
+
     for fn in yt.parallel_objects(files):
         i = files.index(fn)
         if ToPlot[i]:
@@ -126,7 +129,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                 hid = h.halo_num.item()
             else:
                 hid = None
-            ds = load_snap.load(fn, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width)
+            ds = load_snap.load(fn, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part)
             if bhid is not None:
                 bh = ds.sink.loc[ds.sink.ID == bhid]
                 c = [bh.x.item(), bh.y.item(), bh.z.item()]
@@ -321,7 +324,8 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
             hid = h.halo_num.item()
         else:
             hid = None
-        ds = load_snap.load(i+1, stars=True, dm=True, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=rbound[1])
+        
+        ds = load_snap.load(i+1, stars=part, dm=part, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=rbound[1])
 
         p=analysis.profiles(ds, center=center,
             rbound=rbound, n_bins=n_bins,

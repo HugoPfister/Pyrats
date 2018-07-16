@@ -26,9 +26,9 @@ def dm(pfilter, data):
     '''
     if data.ds.cosmological_simulation==1:    
      if data['io','particle_birth_time'] != None:
-         filter = (data['io','particle_birth_time'] == 0) & (data['io','particle_identifier'] > 0)
+         filter = (data['io','particle_birth_time'] == 0) & (data['io','particle_identity'] > 0)
      else:
-         filter= (data['io','particle_identifier'] >0)
+         filter= (data['io','particle_identity'] >0)
     else:
          filter = ((data['io','particle_birth_time'] == 0 ) & (data['io','particle_identity'] > 0))
     return filter
