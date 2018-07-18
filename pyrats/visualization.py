@@ -19,7 +19,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e10,
-                   plotsinks=False, plotparticles=False, sinkdynamics=0,
+                   plotsinks=[-1], plotparticles=False, sinkdynamics=0, BHcolor='black',
                    snap=[-1], extension='pdf'):
     """
     Visualization function, by default it is applied to ALL snapshots
@@ -46,8 +46,11 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     masshalomin : in Msun, minimum mass for the halo to show
 
     bhid : ID of the sink you want to center the images
-    plotsinks : show sinks and their ID
+    plotsinks : if -1 show sinks and their ID
+                if list shows only the asked ones
+                if [0] do not show
     sinkdynamics : draw lines to show BH dynamics between [t-sinkdynamics, t+sinkdynamics], in Myr
+    BHcolor : color to show BHs and their ID 
 
     plotparticles: overplot the particles as black dots
 
@@ -64,6 +67,10 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     if snap != [-1]:
         for i in range(len(files)):
             ToPlot[i] = ((i+1) in snap)
+
+    if ((hnum is not None) and (bhid is not None)):
+        print('Please specify only hnum or bhid but not both')
+        return
 
     if hnum is not None:
         t = trees.Forest(Galaxy=Galaxy)
@@ -149,8 +156,12 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                 p = yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
                                       center=sp.center, width=width)
 
-            if plotsinks:
-                for bhnum in ds.sink.ID:
+            if (plotsinks != [0]):
+                if plotsinks == [-1]:
+                    BHsToShow = ds.sink.ID
+                else:
+                    BHsToShow = np.intersect1d(plotsinks , ds.sink.ID)
+                for bhnum in BHsToShow:
                     ch = ds.sink.loc[ds.sink.ID == bhnum]
                     if (((c[0] - ch.x.item())**2 +
                         (c[1] - ch.y.item())**2 +
@@ -159,12 +170,12 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
                         p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
                                           marker='.', plot_args={
-                                              'color': 'black', 's': 100})
+                                              'color': BHcolor, 's': 100})
 
                         p.annotate_text(
                             [ch.x.item(), ch.y.item(), ch.z.item()],
                             text=str(ch.ID.item()),
-                            text_args={'color': 'black'},
+                            text_args={'color': BHcolor},
                             inset_box_args={'alpha': 0.0}
                         )
 
@@ -181,7 +192,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                             for i in range(len(x)-1):
                                 p.annotate_line([x[i],y[i],z[i]],
                                     [x[i+1],y[i+1],z[i+1]],
-                                    coord_system='data', plot_args={'color':'black'})
+                                    coord_system='data', plot_args={'color':BHcolor})
 
             if plothalos:
                 h = halos.HaloList(ds)
