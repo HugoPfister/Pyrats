@@ -12,13 +12,13 @@ from . import halos, trees, sink, fields
 
 def profiles(ds, center=[0.5,0.5,0.5],
         rbound=[(0.01,'kpc'),(10, 'kpc')],
-        n_bins=128, log=True,
-        qtty=[("gas","density"),("deposit","stars_cic"),("deposit","dm_cic")],
+        n_bins=100, log=True,
+        qtty=[('gas','density')],
         weight_field=('index','cell_volume'), bin_fields=('index', 'radius'),
         hnum=None, Galaxy=False, bhid=None, 
         accumulation=False, filter=None):
     """
-    This routine plot the profile for all snapshots
+    This routine plot the profile for a given snapshots
 
     center : center of the sphere for the plot, useless if hnum/bhid
 
@@ -29,7 +29,7 @@ def profiles(ds, center=[0.5,0.5,0.5],
     filter (None) : add a particular filter (for instance a temperature floor for gas) CARE WITH UNITS
     example syntax for filter: "obj[('gas','temperature')] < 1e4]" (" and obj are mandatory)
 
-    qtty : list qqty to be profiled, must have the same dimension
+    qtty : list of fields to be profiled, must have the same physical dimension
     weight_field : weight field for the profile
 
     hnum : center on the center of the halo
@@ -41,6 +41,11 @@ def profiles(ds, center=[0.5,0.5,0.5],
 
     yt.funcs.mylog.setLevel(40)
     c = center
+    
+    if ((hnum != None) & (bhid != None)):
+        print('Please specify only hnum or bhid but not both')
+        return
+
     if hnum != None:
       if hnum > 0:
         if Galaxy:
@@ -60,6 +65,7 @@ def profiles(ds, center=[0.5,0.5,0.5],
         c = [bh.x.item(), bh.y.item(), bh.z.item()]
 
     sp=ds.sphere(c, (rbound[1][0], rbound[1][1]))
+
     if filter != None:
         sp=ds.cut_region(sp, [filter])
 
