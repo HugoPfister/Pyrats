@@ -18,7 +18,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    width=(10, 'kpc'), axis_units='kpc', folder='./',
                    cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
-                   plothalos=False, masshalomin=1e10,
+                   plothalos=False, masshalomin=1e5,
                    plotsinks=[-1], plotparticles=False, sinkdynamics=0, BHcolor='black',
                    snap=[-1], extension='pdf'):
     """
@@ -195,9 +195,10 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                                     coord_system='data', plot_args={'color':BHcolor})
 
             if plothalos:
-                h = halos.HaloList(ds)
-                hds = h.halos
-
+                if plothalos == 'halos':
+                    hds = ds.halo.halos
+                if plothalos == 'galaxies':
+                    hds = ds.gal.gal 
                 for hid in hds.index:
                     ch = hds.loc[hid]
                     w = ds.arr(width[0], width[1])
@@ -209,10 +210,11 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
                         p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
                                           (ch.rvir.item(), 'Mpc'),
-                                          circle_args={'color': 'black'})
+                                          circle_args={'color': BHcolor})
 
                         p.annotate_text([ch.x.item(), ch.y.item(),
-                                         ch.z.item()], text='%s' % hid)
+                                         ch.z.item()], text='%s' % hid,
+                                         text_args={'color' : BHcolor})
 
             if plotparticles:
                 p.annotate_particles(width)
