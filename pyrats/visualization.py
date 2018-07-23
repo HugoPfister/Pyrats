@@ -19,7 +19,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e5,
-                   plotsinks=[-1], plotparticles=False, sinkdynamics=0, BHcolor='black',
+                   plotsinks=[0], plotparticles=False, sinkdynamics=0, BHcolor='black',
                    snap=[-1], extension='pdf'):
     """
     Visualization function, by default it is applied to ALL snapshots
