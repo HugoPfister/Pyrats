@@ -29,7 +29,7 @@ def profiles(ds, center=[0.5,0.5,0.5],
     filter (None) : add a particular filter (for instance a temperature floor for gas) CARE WITH UNITS
     example syntax for filter: "obj[('gas','temperature')] < 1e4]" (" and obj are mandatory)
 
-    qtty : list of fields to be profiled, must have the same physical dimension
+    qtty : list of fields to be profiled
     weight_field : weight field for the profile
 
     hnum : center on the center of the halo
@@ -121,7 +121,7 @@ def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
         if hid > 0:
             FirstOutput = tree.trees.halo_ts.min()
             prog = tree.get_family(hid, timestep=timestep)
-            #prog = tree.get_main_progenitor(hid, timestep=timestep)
+            #prog = tree.get_main_progenitor(hid, timestep=timestep).sort_values('halo_ts')
             prog['halo_ts'] -= FirstOutput
 
             xh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.x*1000, kind='cubic')
