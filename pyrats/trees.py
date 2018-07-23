@@ -126,7 +126,7 @@ class Forest(object):
             ts = self.halo_ts.max()
         print('Care, this can be very long for galaxies. The get_main_progenitor is much faster')
         print('It is OK for Haloes')
-        progenitors = self._get_progenitors(hnum, timestep=ts)
+        progenitors = self._get_progenitors(hnum, timestep=timestep)
 
         return progenitors
 
@@ -201,7 +201,7 @@ class Forest(object):
         else:
             hid = tree.trees.loc[(tree.trees.halo_ts == cts) & (tree.trees.halo_num == hnum)].index.item()
             all_id = []
-            for ts in range(cts, tree.trees.halo_ts.max()+1):
+            for ts in range(int(tree.trees.loc[hid].tree_step), int(tree.trees.tree_step.max()+1)):
                 all_id += [hid]
                 # Get most massive one
                 hid = tree.trees.loc[hid].descendent_id
