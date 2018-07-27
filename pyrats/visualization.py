@@ -20,7 +20,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e5,
                    plotsinks=[0], plotparticles=False, sinkdynamics=0, BHcolor='black',
-                   snap=[-1], extension='pdf'):
+                   snap=[-1], extension='pdf', method='integrate'):
     """
     Visualization function, by default it is applied to ALL snapshots
 
@@ -154,7 +154,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                 p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
             else:
                 p = yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
-                                      center=sp.center, width=width)
+                                      center=sp.center, width=width, method=method)
 
             if (plotsinks != [0]):
                 if plotsinks == [-1]:
@@ -284,7 +284,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
     files.sort()
 
     path=folder + '/profiles'
-    os.system('mkdir ' + path)
+    _mkdir(path)
 
     ToPlot = [True] * len(files)
 
@@ -292,28 +292,34 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         for i in range(len(files)):
             ToPlot[i] = ((i+1) in snap)
 
-    if hnum != None:
+    if ((hnum is not None) and (bhid is not None)):
+        print('Please specify only hnum or bhid but not both')
+        return
+
+    if hnum is not None:
         t = trees.Forest(Galaxy=Galaxy)
         prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
         for i in range(len(files)):
-            ToPlot[i] = (ToPlot[i]) & (i+1 in prog.halo_ts)
+            ToPlot[i] = (ToPlot[i]) & (i+1 in np.array(prog.halo_ts))
         if Galaxy:
-            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(hnum, timestep))
+            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(
+                hnum, timestep))
         else:
-            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(hnum, timestep))
+            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(
+                hnum, timestep))
         _mkdir(path)
 
-    if bhid != None:
+    if bhid is not None:
         path = os.path.join(path, 'BH%s' % bhid)
         _mkdir(path)
-        print('Loading sink file to determine outputs to show')
         s = sink.Sinks(ID=[bhid])
         tform = s.sink[bhid].t.min()
         tmerge = s.sink[bhid].t.max()
-        snapbh=[]
-        for isnap,f in enumerate(files):
+        for isnap, f in enumerate(files):
             ds = yt.load(f)
-            ToPlot[isnap] = (ToPlot[isnap]) & ((ds.current_time >= ds.arr(tform, 'Gyr')) & (ds.current_time <= ds.arr(tmerge, 'Gyr')))
+            ToPlot[isnap] = (ToPlot[isnap] &
+                             ((ds.current_time >= ds.arr(tform, 'Gyr')) &
+                              (ds.current_time <= ds.arr(tmerge, 'Gyr'))))
 
     path = path + '/'
     for f in qtty:
@@ -325,8 +331,8 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
 
     part=False
     for field in qtty:
-        if (('stars' in field[1]) or ('dm' in field[1])):
-            part=True
+        if (('stars' in field[1]) or ('dm' in field[1])): part=True
+
     for fn in yt.parallel_objects(files):
       plt.clf()
       i = files.index(fn)
@@ -338,7 +344,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         else:
             hid = None
         
-        ds = load_snap.load(i+1, stars=part, dm=part, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=rbound[1])
+        ds = load_snap.load(fn, stars=part, dm=part, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=rbound[1])
 
         p=analysis.profiles(ds, center=center,
             rbound=rbound, n_bins=n_bins,
