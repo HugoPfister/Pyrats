@@ -15,9 +15,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
     if type(files) == int:
         files = 'output_{files:05}/info_{files:05}.txt'.format(files=files)
 
-    yt.funcs.mylog.setLevel(40)
     ds = yt.load(files)
-    yt.funcs.mylog.setLevel(20)
     ids = int(str(ds).split('_')[1])
 
     # read csv file for sinks

@@ -20,7 +20,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.io import FortranFile as FF
-from tqdm import tqdm
 import yt
 from glob import glob
 import os
@@ -43,9 +42,7 @@ class Forest(object):
 
     def __init__(self, Galaxy=False):
         paths = find_outputs()
-        yt.funcs.mylog.setLevel(40)
         ds = yt.load(paths[-1])
-        yt.funcs.mylog.setLevel(20)
 
         _sim = {}
         _sim['h'] = float(ds.cosmology.hubble_constant)
@@ -262,7 +259,7 @@ class Forest(object):
             self.fig = plt.figure(figsize=(12, 12))
         self.fig.savefig(pdf, format='pdf', dpi=200)
 
-        for ihalo in tqdm(tid):
+        for ihalo in tid:
             self.plot_halo_tree(hid=int(ihalo), radius=radius, pdffile=pdf)
             plt.close()
         pdf.close()
