@@ -123,7 +123,7 @@ class Forest(object):
             ts = self.halo_ts.max()
         print('Care, this can be very long for galaxies. The get_main_progenitor is much faster')
         print('It is OK for Haloes')
-        progenitors = self._get_progenitors(hnum, timestep=ts)
+        progenitors = self._get_progenitors(hnum, timestep=timestep)
 
         return progenitors
 
@@ -147,9 +147,11 @@ class Forest(object):
                 if len(progenitors.fathersID.item()) == 1:
                     return progenitors
                 else:
-                    fathers = pd.concat([self.trees.loc[(self.trees.halo_num == fatherID) & (self.trees.halo_ts == ts-1)] for fatherID in progenitors.fathersID.item()])
-                    fathers = fathers.loc[fathers.m == fathers.m.max()]
-                    progenitors = pd.concat([progenitors, self.get_main_progenitor(fathers.halo_num.item(), ts-1)])
+                    fathers = (progenitors.fathersID.item() > 0) #to exclude accreted mass
+                    fathersID = progenitors.fathersID.item()[fathers]
+                    fatherID = progenitors.fatherMass.item()[fathers].argmax()
+                    fatherID = fathersID[fatherID]
+                    progenitors = pd.concat([progenitors, self.get_main_progenitor(fatherID, ts-1)])
                     return progenitors
 
         else:
@@ -196,7 +198,7 @@ class Forest(object):
         else:
             hid = tree.trees.loc[(tree.trees.halo_ts == cts) & (tree.trees.halo_num == hnum)].index.item()
             all_id = []
-            for ts in range(cts, tree.trees.halo_ts.max()+1):
+            for ts in range(int(tree.trees.loc[hid].tree_step), int(tree.trees.tree_step.max()+1)):
                 all_id += [hid]
                 # Get most massive one
                 hid = tree.trees.loc[hid].descendent_id

@@ -6,8 +6,11 @@ import os as os
 from . import halos, fields, sink, galaxies
 
 
-def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
-         bhID=None, radius=None, stars=False, dm=False):
+def load(files='',
+         haloID=None, Galaxy=False, bhID=None, 
+         radius=None, bbox=None,
+         MatchObjects=False, fvir=[0.1,0.05,0.5],
+         stars=False, dm=False):
     """
     Read __init_.load function for infos
     """
@@ -54,7 +57,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
         for hid in halo.halos.sort_values('level').index:
             h=halo.halos.loc[hid]
             d = np.sqrt((h.x.item() - gal.gal.x)**2 + (h.y.item() - gal.gal.y)** 2 + (h.z.item() - gal.gal.z)**2)
-            galID = gal.gal.loc[((d * L) < h.rvir.item()*0.1) & (gal.gal.mhalo < h.m.item())].index
+            galID = gal.gal.loc[((d * L) < h.rvir.item()*fvir[0]) & (gal.gal.mhalo < h.m.item())].index
             if len(galID) != 0:
                 gal.gal.loc[galID, 'mhalo'] = h.m.item()
                 gal.gal.loc[galID, 'hid'] = hid
@@ -63,7 +66,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
                 halo.halos.loc[hid, 'mgal'] = gal.gal.loc[galID].m.item()
 
             d = np.sqrt((h.x.item() - sinks.x)**2 + (h.y.item() - sinks.y)** 2 + (h.z.item() - sinks.z)**2)
-            bhid = sinks.loc[((d * L) < h.rvir.item()*0.05) & (sinks.mhalo < h.m.item())].index
+            bhid = sinks.loc[((d * L) < h.rvir.item()*fvir[1]) & (sinks.mhalo < h.m.item())].index
             if len(bhid != 0):
                 sinks.loc[bhid, 'mhalo'] = h.m.item()
                 sinks.loc[bhid, 'hid'] = hid
@@ -77,7 +80,7 @@ def load(files='', MatchObjects=False, bbox=None, haloID=None, Galaxy=False,
         for galID in gal.gal.sort_values('level').index:
             g = gal.gal.loc[galID]
             d = np.sqrt((g.x.item() - sinks.x)**2 + (g.y.item() - sinks.y)** 2 + (g.z.item() - sinks.z)**2)
-            bhid = sinks.loc[((d * L) < g.r.item()*0.5) & (sinks.mgal < g.m.item())].index
+            bhid = sinks.loc[((d * L) < g.r.item()*fvir[2]) & (sinks.mgal < g.m.item())].index
             if len(bhid) > 0:
                 sinks.loc[bhid, 'mgal'] = g.m.item()
                 sinks.loc[bhid, 'galID'] = galID
