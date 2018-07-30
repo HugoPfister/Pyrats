@@ -4,6 +4,7 @@ from . import halos, fields, visualization, utils, physics, sink, analysis, \
 __all__ = ['halos', 'utils', 'trees', 'visualization',
            'fields', 'physics', 'sink', 'analysis']
 
+import yt.units as constants
 
 def load(files='', 
          haloID=None, Galaxy=False, bhID=None, 
