@@ -15,7 +15,7 @@ def load(files='',
     Read __init_.load function for infos
     """
 
-    if type(files) == int:
+    if type(files) in [int, np.int32, np.int64]:
         files = 'output_{files:05}/info_{files:05}.txt'.format(files=files)
 
     yt.funcs.mylog.setLevel(40)
