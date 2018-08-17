@@ -74,7 +74,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
     if hnum is not None:
         t = trees.Forest(Galaxy=Galaxy)
-        prog = t.get_main_progenitor(hnum=hnum, timestep=timestep)
+        prog = t.get_family(hnum=hnum, timestep=timestep)
         for i in range(len(files)):
             ToPlot[i] = (ToPlot[i]) & (i+1 in np.array(prog.halo_ts))
         if Galaxy:
