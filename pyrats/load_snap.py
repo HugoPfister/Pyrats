@@ -2,6 +2,7 @@ import yt
 from yt.utilities.logger import ytLogger as mylog
 import numpy as np
 import os as os
+from glob import glob
 
 from . import halos, fields, sink, galaxies
 
@@ -16,7 +17,10 @@ def load(files='',
     """
 
     if type(files) in [int, np.int32, np.int64]:
-        files = 'output_{files:05}/info_{files:05}.txt'.format(files=files)
+        if files != -1:
+            files = 'output_{files:05}/info_{files:05}.txt'.format(files=files)
+        else:
+            files = glob('output_*/info_*.txt')[-1]
 
     yt.funcs.mylog.setLevel(40)
     ds = yt.load(files)

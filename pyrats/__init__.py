@@ -14,7 +14,7 @@ def load(files='',
     """
     Load a RAMSES output
     CARE : fields depend on the version of ramses
-    * files: output/info from ramses, can be the ID of the output
+    * files: output/info from ramses, can be the ID of the output. If -1, load the last output
 
     * stars (False): if True, then add a filter to select star particles
     * dm (False): if True, then add a filter to select dm particles
