@@ -181,7 +181,7 @@ class Forest(object):
         """
         # Get current timestep
         if timestep is None:
-            cts = tree.halo_ts.max()
+            cts = tree.trees.halo_ts.max()
         else:
             cts = timestep
 
