@@ -15,7 +15,7 @@ def _mkdir(path):
 def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    field=('gas', 'density'),
                    weight_field=('index','ones'), slice=False,
-                   width=(10, 'kpc'), axis_units='kpc', folder='./',
+                   width=(10, 'kpc'), axis_units=None, folder='./',
                    cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e5,
@@ -29,7 +29,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
     width : width of the window, default (10, 'kpc'), can be 'Rvir'
         in that case the size is set to the virial radius of each snapshots
-    axis_units : units for the x/y axis, if None then no axis
+    axis_units : units for the x/y axis, units for the colorbar, if None then no axis 
+        both on x,y and the colorbar
     folder : folder to save the images
 
     field : yt field to show
@@ -120,6 +121,15 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     else:
         path = os.path.join(path, 'LinScale')
     _mkdir(path)
+
+    if plotsinks == [0]:
+        path = os.path.join(path, 'NoBH')
+    elif plotsinks == [-1]:
+        path = os.path.join(path, 'AllBH')
+    else plotsinks == [0]:
+        path = os.path.join(path, 'SomeBH')
+    _mkdir(path)
+
 
     if sinkdynamics > 0:
         s = sink.Sinks()
@@ -220,26 +230,26 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                 p.annotate_particles(width)
 
             if axis_units is None:
-                p.annotate_scale(corner='upper_right')
+                p.annotate_scale(corner='upper_right', draw_inset_box=True)
                 p.hide_axes()
+                p.hide_colorbar()
             else:
                 p.annotate_scale(corner='upper_right', draw_inset_box=True)
                 p.set_axes_unit(axis_units)
-            p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
 
-            p.set_cmap(field=field, cmap=cmap)
-            if cbarunits is None:
-                p.hide_colorbar()
-            else:
-                p.set_unit(field=field, new_unit=cbarunits)
             if cbarbounds is not None:
+                if cbarunits is None:
+                    print('Specify a units for the boundaries of the colorbar')
+                p.set_unit(field=field, new_unit=cbarunits)
                 p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
-            p.set_log(field, log=False)
             if LogScale:
                 p.set_log(field, log=True)
+            else:
+                p.set_log(field, log=False)
 
+            p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
+            p.set_cmap(field=field, cmap=cmap)
             p.set_background_color(field)
-
             p.set_width(width)
 
             p.save(path+'/'+str(ds)+'.'+extension)
