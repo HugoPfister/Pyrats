@@ -9,6 +9,8 @@ from scipy.io import FortranFile as FF
 import numpy as np
 from glob import glob
 import os
+import yt
+from .import sink, trees
 
 # Classes stuff
 class ImplementError(Exception):
@@ -99,3 +101,36 @@ def find_outputs(path='.'):
         outputs.append(full_path)
 
     return outputs
+
+def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None):
+    
+    yt.funcs.mylog.setLevel(0)
+    files = find_outputs()
+    ToPlot = [True] * len(files)
+
+    if snap != [-1]:
+        for i in range(len(files)):
+            ToPlot[i] = ((i+1) in snap)
+
+    if ((hnum is not None) and (bhid is not None)):
+        #print('Please specify only hnum or bhid but not both')
+        raise AttributeError('Please specify only hnum or bhid but not both')
+        return
+
+    if hnum is not None:
+        t = trees.Forest(Galaxy=Galaxy)
+        prog = t.get_family(hnum=hnum, timestep=timestep)
+        for i in range(len(files)):
+            ToPlot[i] = (ToPlot[i]) & (i+1 in np.array(prog.halo_ts))
+
+    if bhid is not None:
+        s = sink.Sinks(ID=[bhid])
+        tform = s.sink[bhid].t.min()
+        tmerge = s.sink[bhid].t.max()
+        for isnap, f in tqdm(enumerate(files)):
+            ds = yt.load(f)
+            ToPlot[isnap] = (ToPlot[isnap] &
+                             ((ds.current_time >= ds.arr(tform, 'Gyr')) &
+                              (ds.current_time <= ds.arr(tmerge, 'Gyr'))))
+
+    return ToPlot

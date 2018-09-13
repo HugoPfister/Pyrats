@@ -63,40 +63,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     path = os.path.join(folder, 'snapshots')
     _mkdir(path)
 
-    ToPlot = [True] * len(files)
-
-    if snap != [-1]:
-        for i in range(len(files)):
-            ToPlot[i] = ((i+1) in snap)
-
-    if ((hnum is not None) and (bhid is not None)):
-        print('Please specify only hnum or bhid but not both')
-        return
-
-    if hnum is not None:
-        t = trees.Forest(Galaxy=Galaxy)
-        prog = t.get_family(hnum=hnum, timestep=timestep)
-        for i in range(len(files)):
-            ToPlot[i] = (ToPlot[i]) & (i+1 in np.array(prog.halo_ts))
-        if Galaxy:
-            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(
-                hnum, timestep))
-        else:
-            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(
-                hnum, timestep))
-        _mkdir(path)
-
-    if bhid is not None:
-        path = os.path.join(path, 'BH%s' % bhid)
-        _mkdir(path)
-        s = sink.Sinks(ID=[bhid])
-        tform = s.sink[bhid].t.min()
-        tmerge = s.sink[bhid].t.max()
-        for isnap, f in enumerate(files):
-            ds = yt.load(f)
-            ToPlot[isnap] = (ToPlot[isnap] &
-                             ((ds.current_time >= ds.arr(tform, 'Gyr')) &
-                              (ds.current_time <= ds.arr(tmerge, 'Gyr'))))
+    ToPlot = utils.filter_outputs(snap=snap, hnum=hnum, timestep=timestep, Galaxy=Galaxy)
 
     if slice:
         path = os.path.join(path, 'Slice')
@@ -126,7 +93,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         path = os.path.join(path, 'NoBH')
     elif plotsinks == [-1]:
         path = os.path.join(path, 'AllBH')
-    else plotsinks == [0]:
+    else:
         path = os.path.join(path, 'SomeBH')
     _mkdir(path)
 
@@ -229,14 +196,13 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             if plotparticles:
                 p.annotate_particles(width)
 
+            p.set_cmap(field=field, cmap=cmap)
+            p.set_background_color(field=field)
             if axis_units is None:
-                p.annotate_scale(corner='upper_right', draw_inset_box=True)
                 p.hide_axes()
                 p.hide_colorbar()
             else:
-                p.annotate_scale(corner='upper_right', draw_inset_box=True)
                 p.set_axes_unit(axis_units)
-
             if cbarbounds is not None:
                 if cbarunits is None:
                     print('Specify a units for the boundaries of the colorbar')
@@ -247,12 +213,12 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             else:
                 p.set_log(field, log=False)
 
+            p.annotate_scale(corner='upper_right', draw_inset_box=True)
             p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
-            p.set_cmap(field=field, cmap=cmap)
-            p.set_background_color(field)
             p.set_width(width)
 
-            p.save(path+'/'+str(ds)+'.'+extension)
+
+            p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
         # yt.funcs.mylog.setLevel(20)
     return
 
