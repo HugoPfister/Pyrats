@@ -10,7 +10,7 @@ def load(files='',
          haloID=None, Galaxy=False, bhID=None, 
          radius=None, bbox=None, 
          MatchObjects=False, fvir=[0.1,0.05,0.5],
-         stars=False, dm=False):
+         stars=False, dm=False, verbose=True):
     """
     Load a RAMSES output
     CARE : fields depend on the version of ramses
@@ -29,12 +29,14 @@ def load(files='',
     * radius: in the form (10, 'kpc') is the size of the region kept for the dataset
     
     * haloID/bhID : the ID of the halo (or galaxy if Galaxy)/ BH you want to center the box
+
+    * verbose : if False, do not show the infos from YT (usefull if there is a loop on all snapshots...)
     """
 
     ds = load_snap.load(files=files, 
                         haloID=haloID, Galaxy=Galaxy, bhID=bhID, 
                         MatchObjects=MatchObjects, fvir = fvir,
                         radius=radius, bbox=bbox, 
-                        stars=stars, dm=dm)
+                        stars=stars, dm=dm, verbose=verbose)
 
     return ds

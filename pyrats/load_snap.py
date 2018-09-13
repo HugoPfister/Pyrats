@@ -11,7 +11,7 @@ def load(files='',
          haloID=None, Galaxy=False, bhID=None, 
          radius=None, bbox=None,
          MatchObjects=False, fvir=[0.1,0.05,0.5],
-         stars=False, dm=False):
+         stars=False, dm=False, verbose=True):
     """
     Read __init_.load function for infos
     """
@@ -24,7 +24,8 @@ def load(files='',
 
     yt.funcs.mylog.setLevel(40)
     ds = yt.load(files)
-    yt.funcs.mylog.setLevel(20)
+    if verbose:
+        yt.funcs.mylog.setLevel(20)
     ids = int(str(ds).split('_')[1])
 
     # read csv file for sinks
@@ -86,7 +87,8 @@ def load(files='',
         for galID in gal.gal.sort_values('level').index:
             g = gal.gal.loc[galID]
             d = np.sqrt((g.x.item() - sinks.x)**2 + (g.y.item() - sinks.y)** 2 + (g.z.item() - sinks.z)**2)
-            bhid = sinks.loc[((d * L) < g.r.item()*fvir[2]) & (sinks.mgal < g.m.item())].index
+            #bhid = sinks.loc[((d * L) < g.r.item()*fvir[2]) & (sinks.mgal < g.m.item())].index
+            bhid = sinks.loc[((d * L) < g.r.item()*fvir[2])].index
             if len(bhid) > 0:
                 sinks.loc[bhid, 'mgal'] = g.m.item()
                 sinks.loc[bhid, 'galID'] = galID
