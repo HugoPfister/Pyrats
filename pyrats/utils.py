@@ -107,6 +107,7 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
     yt.funcs.mylog.setLevel(0)
     files = find_outputs()
     ToPlot = [True] * len(files)
+    hid = [None for f in files]
 
     if snap != [-1]:
         for i in range(len(files)):
@@ -120,6 +121,8 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
     if hnum is not None:
         t = trees.Forest(Galaxy=Galaxy)
         prog = t.get_family(hnum=hnum, timestep=timestep)
+        for i in prog.index:
+            hid[prog.loc[i].halo_ts.astype(int)-1] = prog.loc[i].halo_num.astype(int)
         for i in range(len(files)):
             ToPlot[i] = (ToPlot[i]) & (i+1 in np.array(prog.halo_ts))
 
@@ -133,4 +136,4 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
                              ((ds.current_time >= ds.arr(tform, 'Gyr')) &
                               (ds.current_time <= ds.arr(tmerge, 'Gyr'))))
 
-    return ToPlot
+    return ToPlot, hid

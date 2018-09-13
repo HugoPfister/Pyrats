@@ -221,7 +221,12 @@ class Forest(object):
             ts = tree.trees.halo_ts.max()
         else:
             ts = timestep
-        my_index = tree.trees.loc[(tree.trees.halo_ts == ts) & (tree.trees.halo_num == hnum)].index.item()
+
+        try:
+            my_index = tree.trees.loc[(tree.trees.halo_ts == ts) & (tree.trees.halo_num == hnum)].index.item()
+        except ValueError:
+            raise ValueError('It looks like there are no halos with this ID at this timestep')
+            
         child = tree.get_main_children(hnum, timestep)
         fathers = tree.get_main_progenitor(hnum, timestep)
         fathers = fathers.loc[fathers.index != my_index]

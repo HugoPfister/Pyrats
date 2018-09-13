@@ -63,7 +63,18 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     path = os.path.join(folder, 'snapshots')
     _mkdir(path)
 
-    ToPlot = utils.filter_outputs(snap=snap, hnum=hnum, timestep=timestep, Galaxy=Galaxy)
+    if hnum is not None:
+        if Galaxy:
+            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(
+                hnum, timestep))
+        else:
+            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(
+                hnum, timestep))
+        _mkdir(path)
+
+    if bhid is not None:
+        path = os.path.join(path, 'BH%s' % bhid)
+        _mkdir(path)
 
     if slice:
         path = os.path.join(path, 'Slice')
@@ -98,6 +109,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     _mkdir(path)
 
 
+    ToPlot, haloid = utils.filter_outputs(snap=snap, hnum=hnum, timestep=timestep, Galaxy=Galaxy)
     if sinkdynamics > 0:
         s = sink.Sinks()
 
@@ -108,21 +120,16 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         i = files.index(fn)
         if ToPlot[i]:
             c = center
-            if hnum is not None:
-                h = prog.loc[prog.halo_ts == i+1]
-                hid = h.halo_num.item()
-            else:
-                hid = None
-            ds = load_snap.load(fn, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
+            ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
             if bhid is not None:
                 bh = ds.sink.loc[ds.sink.ID == bhid]
                 c = [bh.x.item(), bh.y.item(), bh.z.item()]
 
             if hnum is not None:
                 if Galaxy:
-                    h = ds.gal.gal.loc[hid]
+                    h = ds.gal.gal.loc[haloid[i]]
                 else:
-                    h = ds.halo.halos.loc[hid]
+                    h = ds.halo.halos.loc[haloid[i]]
                 c = [h.x, h.y, h.z]
 
             sp = ds.sphere(c, width)
@@ -219,7 +226,6 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
 
             p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
-        # yt.funcs.mylog.setLevel(20)
     return
 
 
