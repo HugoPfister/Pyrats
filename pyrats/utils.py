@@ -116,7 +116,6 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
     if ((hnum is not None) and (bhid is not None)):
         #print('Please specify only hnum or bhid but not both')
         raise AttributeError('Please specify only hnum or bhid but not both')
-        return
 
     if hnum is not None:
         t = trees.Forest(Galaxy=Galaxy)
@@ -137,3 +136,10 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
                               (ds.current_time <= ds.arr(tmerge, 'Gyr'))))
 
     return ToPlot, hid
+
+def get_ncpus():
+    try:
+        ncpus = int(os.environ['PBS_NUM_PPN'])
+    except KeyError:
+        ncpus = 1
+    return ncpus
