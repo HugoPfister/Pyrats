@@ -58,7 +58,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     snap : list of snapshots you want to show, default ALL (-1)
     """
 
-    # yt.funcs.mylog.setLevel(40)
+    yt.funcs.mylog.setLevel(40)
     files = utils.find_outputs()
     path = os.path.join(folder, 'snapshots')
     _mkdir(path)
@@ -113,7 +113,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                 hid = h.halo_num.item()
             else:
                 hid = None
-            ds = load_snap.load(fn, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part)
+            ds = load_snap.load(fn, haloID=hid, Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
             if bhid is not None:
                 bh = ds.sink.loc[ds.sink.ID == bhid]
                 c = [bh.x.item(), bh.y.item(), bh.z.item()]
