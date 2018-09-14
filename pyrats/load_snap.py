@@ -105,7 +105,7 @@ def load(files='',
             h = gal.gal.loc[haloID]
         else:
             h = halo.halos.loc[haloID]
-        center = np.copy([h.x, h.y, h.z])
+        center = np.copy([h.x.item(), h.y.item(), h.z.item()])
         w = 2*h.r/float(ds.length_unit.in_units('Mpc'))
         if radius is not None:
             w = float(ds.arr(radius[0]*2, radius[1]).in_units('code_length'))
@@ -144,3 +144,23 @@ def load(files='',
                 ds.add_particle_filter("dm")
 
     return ds
+
+def get_sphere(ds, bhid, hnum, Galaxy, width):
+    '''
+    Create directly a sphere around a BH/halo/galaxy
+    '''
+    if ((hnum is not None) and (bhid is not None)):
+        raise AttributeError('Please specify only hnum or bhid but not both')
+
+    if bhid is not None:
+        h = ds.sink.loc[ds.sink.ID == bhid]
+
+    if hnum is not None:
+        if Galaxy:
+            h = ds.gal.gal.loc[hnum]
+        else:
+            h = ds.halo.halos.loc[hnum]
+    
+    c = [h.x.item(), h.y.item(), h.z.item()]
+    sp = ds.sphere(c, width)
+    return sp
