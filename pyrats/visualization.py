@@ -121,19 +121,8 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         if ToPlot[i]:
             c = center
             ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
-            if bhid is not None:
-                bh = ds.sink.loc[ds.sink.ID == bhid]
-                c = [bh.x.item(), bh.y.item(), bh.z.item()]
-
-            if hnum is not None:
-                if Galaxy:
-                    h = ds.gal.gal.loc[haloid[i]]
-                else:
-                    h = ds.halo.halos.loc[haloid[i]]
-                c = [h.x, h.y, h.z]
-
-            sp = ds.sphere(c, width)
-
+            sp = load_snap.get_sphere(ds, bhid, haloid[i], Galaxy, width)
+             
             if slice:
                 p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
             else:
