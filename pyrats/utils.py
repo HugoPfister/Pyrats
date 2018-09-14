@@ -129,7 +129,7 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
         s = sink.Sinks(ID=[bhid])
         tform = s.sink[bhid].t.min()
         tmerge = s.sink[bhid].t.max()
-        for isnap, f in tqdm(enumerate(files)):
+        for isnap, f in enumerate(files):
             ds = yt.load(f)
             ToPlot[isnap] = (ToPlot[isnap] &
                              ((ds.current_time >= ds.arr(tform, 'Gyr')) &
@@ -137,9 +137,36 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
 
     return ToPlot, hid
 
-def get_ncpus():
+def _get_ncpus():
+    '''
+    output the number of cpus available for OMP tasks
+    '''
     try:
         ncpus = int(os.environ['PBS_NUM_PPN'])
     except KeyError:
         ncpus = 1
     return ncpus
+
+def _get_extension(hnum=None, timestep=None, Galaxy=False, bhid=None, radius=None):
+    '''
+    when centering around BH/Halo/Gal w/ w/o a given radius
+    output is the extension to keep track of the informations
+    '''
+    if hnum != None:
+        if Galaxy:
+            name = 'Galaxy{}'.format(hnum)
+        else:
+            name = 'Halo{}'.format(hnum)
+        if timestep != None:
+            name += '_output{:05}'.format(timestep)
+
+    if bhid != None:
+        name = 'BH{}'.format(bhid)
+
+    if radius != None:
+        name += '_{}{}'.format(radius[0],radius[1])
+
+    return name
+
+
+
