@@ -163,8 +163,16 @@ def _get_extension(hnum=None, timestep=None, Galaxy=False, bhid=None, radius=Non
     if bhid != None:
         name = 'BH{}'.format(bhid)
 
-    if radius != None:
-        name += '_{}{}'.format(radius[0],radius[1])
+    if ((type(radius) is int) | (type(radius) is float)):
+        name += '_{}dx'.format(radius)
+    elif (type(radius) is tuple):
+        if ((type(radius[0]) is int) | (type(radius) is float)) & (type(radius[1]) is str):
+            name += '_{}{}'.format(radius[0],radius[1])
+        else:
+            raise TypeError('Please give the radius with the form (10,\'pc\')')
+    else:
+        raise TypeError('Please give an int or a tuple like (10, \'pc\') for the radius')
+
 
     return name
 

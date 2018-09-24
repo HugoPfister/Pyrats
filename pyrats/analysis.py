@@ -161,7 +161,7 @@ def mean_density(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None, r
     
     ds = load_snap.load(1, verbose=False)
     if ((type(radius) is int) | (type(radius) is float)):
-        width = radius*(ds.length_unit/ds.parameters['aexp']).to('pc')/2**ds.parameters['levelmax'] 
+        width = (float(radius*(ds.length_unit/ds.parameters['aexp']).to('pc')/2**ds.parameters['levelmax']), 'pc')
     elif (type(radius) is tuple):
         if ((type(radius[0]) is int) | (type(radius) is float)) & (type(radius[1]) is str):
             width = radius
@@ -170,12 +170,12 @@ def mean_density(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None, r
     else:
         raise TypeError('Please give an int or a tuple like (10, \'pc\') for the radius')
  
-    res = np.array(Parallel(n_jobs=utils._get_ncpus())(delayed(_mean_density)(i, ToConsider, hid, width, bhid, files, Galaxy) for i in range(len(files))))
+    res = np.array(Parallel(n_jobs=utils._get_ncpus())(delayed(_mean_density)(i, ToConsider, hid, width, bhid, files, Galaxy) for i in tqdm(range(len(files)))))
     res = res[res>-1]
     res = res.reshape(len(res) // 3, 3)
     res=pd.DataFrame(res, columns=['t', 'rho_star', 'rho_gas'])
     
-    res.to_csv('Density_'+utils._get_extension(hnum,timestep,Galaxy,bhid,radius))
+    res.to_csv('Density_'+utils._get_extension(hnum,timestep,Galaxy,bhid,radius), index=False)
 
     return res
 
