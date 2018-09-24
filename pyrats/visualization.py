@@ -119,7 +119,6 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     for fn in yt.parallel_objects(files):
         i = files.index(fn)
         if ToPlot[i]:
-            c = center
             ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
             sp = load_snap.get_sphere(ds, bhid, haloid[i], Galaxy, width)
              
@@ -136,9 +135,9 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                     BHsToShow = np.intersect1d(plotsinks , ds.sink.ID)
                 for bhnum in BHsToShow:
                     ch = ds.sink.loc[ds.sink.ID == bhnum]
-                    if (((c[0] - ch.x.item())**2 +
-                        (c[1] - ch.y.item())**2 +
-                        (c[2] - ch.z.item())**2) <
+                    if (((float(sp.center[0].to('code_length')) - ch.x.item())**2 +
+                        (float(sp.center[1].to('code_length')) - ch.y.item())**2 +
+                        (float(sp.center[2].to('code_length')) - ch.z.item())**2) <
                         ((sp.radius.in_units('code_length') / 2)**2)):
 
                         p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
