@@ -813,18 +813,16 @@ class Forest(object):
                                fatherID, fatherMass, sonsID)
                     j += 1
 
-        # types = {}
-        # for k in ('ID', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id',
-        #           'fathersID', 'sonsID'):
-        #     types[k] = np.int64
-        # for k in ('m', 'dmacc', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly',
-        #           'Lz', 'r', 'a', 'b', 'c', 'ek', 'ep', 'et', 'spin', 'rvir',
-        #           'mvir', 'tvir', 'cvel', 'FatherMass'):
-        #     types[k] = np.float64
-
         dd = {k: data[:, i]
               for i, k in enumerate(Key_tree)}
 
         self.trees = pd.DataFrame(dd)
+
+        for k in ['halo_num', 'tree_step', 'level', 'host_halo_id', 'host_sub_id']:
+            self.trees[k] = self.trees[k].astype(np.int32)
+        for k in ['m', 'dmacc', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly',
+                  'Lz', 'r', 'a', 'b', 'c', 'ek', 'ep', 'et', 'spin', 'rvir',
+                  'mvir', 'tvir', 'cvel']:
+            self.trees[k] = self.trees[k].astype(np.float32)
 
         return self
