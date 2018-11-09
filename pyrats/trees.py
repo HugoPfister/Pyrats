@@ -189,7 +189,7 @@ class Forest(object):
         """
         # Get current timestep
         if timestep is None:
-            cts = tree.halo_ts.max()
+            cts = tree.trees.halo_ts.max()
         else:
             cts = timestep
 
@@ -229,7 +229,12 @@ class Forest(object):
             ts = tree.trees.halo_ts.max()
         else:
             ts = timestep
-        my_index = tree.trees.loc[(tree.trees.halo_ts == ts) & (tree.trees.halo_num == hnum)].index.item()
+
+        try:
+            my_index = tree.trees.loc[(tree.trees.halo_ts == ts) & (tree.trees.halo_num == hnum)].index.item()
+        except ValueError:
+            raise ValueError('It looks like there are no halos with this ID at this timestep')
+            
         child = tree.get_main_children(hnum, timestep)
         fathers = tree.get_main_progenitor(hnum, timestep)
         fathers = fathers.loc[fathers.index != my_index]
@@ -816,18 +821,16 @@ class Forest(object):
                                fatherID, fatherMass, sonsID)
                     j += 1
 
-        # types = {}
-        # for k in ('ID', 'halo_ts', 'level', 'host_halo_id', 'host_sub_id',
-        #           'fathersID', 'sonsID'):
-        #     types[k] = np.int64
-        # for k in ('m', 'dmacc', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly',
-        #           'Lz', 'r', 'a', 'b', 'c', 'ek', 'ep', 'et', 'spin', 'rvir',
-        #           'mvir', 'tvir', 'cvel', 'FatherMass'):
-        #     types[k] = np.float64
-
         dd = {k: data[:, i]
               for i, k in enumerate(Key_tree)}
 
         self.trees = pd.DataFrame(dd)
+
+        for k in ['halo_num', 'tree_step', 'level', 'host_halo_id', 'host_sub_id']:
+            self.trees[k] = self.trees[k].astype(np.int32)
+        for k in ['m', 'dmacc', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly',
+                  'Lz', 'r', 'a', 'b', 'c', 'ek', 'ep', 'et', 'spin', 'rvir',
+                  'mvir', 'tvir', 'cvel']:
+            self.trees[k] = self.trees[k].astype(np.float32)
 
         return self

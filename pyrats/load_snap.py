@@ -3,6 +3,7 @@ from yt.utilities.logger import ytLogger as mylog
 import numpy as np
 import os as os
 import numbers
+from glob import glob
 
 from . import halos, fields, sink, galaxies
 
@@ -11,7 +12,7 @@ def load(files='',
          haloID=None, Galaxy=False, bhID=None, 
          radius=None, bbox=None,
          MatchObjects=False, fvir=[0.1,0.05,0.5],
-         stars=False, dm=False, prefix='./'):
+         stars=False, dm=False, prefix='./', verbose=True):
     """
     Loads a ramses output
 
@@ -54,10 +55,15 @@ def load(files='',
     """
 
     if isinstance(files, numbers.Number):
-        files = os.path.join(prefix, 'output_{files:05d}', 'info_{files:05d}.txt')\
-                       .format(files=files)
+        if files == -1:
+            files = glob('output_?????/info_?????.txt')[-1]
+        else:
+            files = os.path.join(prefix, 'output_{files:05d}', 'info_{files:05d}.txt')\
+              .format(files=files)
 
     ds = yt.load(files)
+    if verbose:
+        yt.funcs.mylog.setLevel(20)
     ids = int(str(ds).split('_')[1])
 
     # read csv file for sinks
@@ -119,7 +125,8 @@ def load(files='',
         for galID in gal.gal.sort_values('level').index:
             g = gal.gal.loc[galID]
             d = np.sqrt((g.x.item() - sinks.x)**2 + (g.y.item() - sinks.y)** 2 + (g.z.item() - sinks.z)**2)
-            bhid = sinks.loc[((d * L) < g.r.item()*fvir[2]) & (sinks.mgal < g.m.item())].index
+            #bhid = sinks.loc[((d * L) < g.r.item()*fvir[2]) & (sinks.mgal < g.m.item())].index
+            bhid = sinks.loc[((d * L) < g.r.item()*fvir[2])].index
             if len(bhid) > 0:
                 sinks.loc[bhid, 'mgal'] = g.m.item()
                 sinks.loc[bhid, 'galID'] = galID
@@ -180,3 +187,23 @@ def load(files='',
         ds.add_particle_filter("dm")
 
     return ds
+
+def get_sphere(ds, bhid, hnum, Galaxy, width):
+    '''
+    Create directly a sphere around a BH/halo/galaxy
+    '''
+    if ((hnum is not None) and (bhid is not None)):
+        raise AttributeError('Please specify only hnum or bhid but not both')
+
+    if bhid is not None:
+        h = ds.sink.loc[ds.sink.ID == bhid]
+
+    if hnum is not None:
+        if Galaxy:
+            h = ds.gal.gal.loc[hnum]
+        else:
+            h = ds.halo.halos.loc[hnum]
+    
+    c = [h.x.item(), h.y.item(), h.z.item()]
+    sp = ds.sphere(c, width)
+    return sp

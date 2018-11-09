@@ -9,6 +9,8 @@ from scipy.io import FortranFile as FF
 import numpy as np
 from glob import glob
 import os
+import yt
+from .import sink, trees
 
 # Classes stuff
 class ImplementError(Exception):
@@ -100,3 +102,80 @@ def find_outputs(path='.'):
             outputs.append(full_path)
 
     return outputs
+
+def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None):
+    
+    yt.funcs.mylog.setLevel(0)
+    files = find_outputs()
+    ToPlot = [True] * len(files)
+    hid = [None for f in files]
+
+    if snap != [-1]:
+        for i in range(len(files)):
+            ToPlot[i] = ((i+1) in snap)
+
+    if ((hnum is not None) and (bhid is not None)):
+        #print('Please specify only hnum or bhid but not both')
+        raise AttributeError('Please specify only hnum or bhid but not both')
+
+    if hnum is not None:
+        t = trees.Forest(Galaxy=Galaxy)
+        prog = t.get_family(hnum=hnum, timestep=timestep)
+        for i in prog.index:
+            hid[prog.loc[i].halo_ts.astype(int)-1] = prog.loc[i].halo_num.astype(int)
+        for i in range(len(files)):
+            ToPlot[i] = (ToPlot[i]) & (i+1 in np.array(prog.halo_ts))
+
+    if bhid is not None:
+        s = sink.Sinks(ID=[bhid])
+        tform = s.sink[bhid].t.min()
+        tmerge = s.sink[bhid].t.max()
+        for isnap, f in enumerate(files):
+            ds = yt.load(f)
+            ToPlot[isnap] = (ToPlot[isnap] &
+                             ((ds.current_time >= ds.arr(tform, 'Gyr')) &
+                              (ds.current_time <= ds.arr(tmerge, 'Gyr'))))
+
+    return ToPlot, hid
+
+def _get_ncpus():
+    '''
+    output the number of cpus available for OMP tasks
+    '''
+    try:
+        ncpus = int(os.environ['PBS_NUM_PPN'])
+    except KeyError:
+        ncpus = 1
+    return ncpus
+
+def _get_extension(hnum=None, timestep=None, Galaxy=False, bhid=None, radius=None):
+    '''
+    when centering around BH/Halo/Gal w/ w/o a given radius
+    output is the extension to keep track of the informations
+    '''
+    if hnum != None:
+        if Galaxy:
+            name = 'Galaxy{}'.format(hnum)
+        else:
+            name = 'Halo{}'.format(hnum)
+        if timestep != None:
+            name += '_output{:05}'.format(timestep)
+
+    if bhid != None:
+        name = 'BH{}'.format(bhid)
+
+    if ((type(radius) is int) | (type(radius) is float)):
+        name += '_{}dx'.format(radius)
+    elif (type(radius) is tuple):
+        if ((type(radius[0]) is int) | (type(radius) is float)) & (type(radius[1]) is str):
+            name += '_{}{}'.format(radius[0],radius[1])
+        else:
+            raise TypeError('Please give the radius with the form (10,\'pc\')')
+    else:
+        raise TypeError('Please give an int or a tuple like (10, \'pc\') for the radius')
+
+
+    return name
+
+
+

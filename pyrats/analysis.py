@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import pandas as pd
 import numpy as np
+from joblib import Parallel, delayed
 
-
-from . import halos, trees, sink, fields
+from . import halos, trees, sink, fields, utils, load_snap
 
 def profiles(ds, center=[0.5,0.5,0.5],
         rbound=[(0.01,'kpc'),(10, 'kpc')],
@@ -142,3 +142,56 @@ def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
         t+=[bh.t]
 
     return d, t
+
+def mean_density(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None, radius=1):
+    '''
+    This routine measure the mean density (gas/stars) in a sphere of radius 'radius' around the defined object
+    the output is a pandaframe with time and mean density.
+
+    radius : if int then in units of resolution, else in the form (10, 'pc')
+    hnum : ID of the halo, at timestep, you want to center the images
+    timestep : see above, default is the last one
+    Galaxy : True if galaxy, false if halo
+    bhid : ID of the sink you want to center the images
+    snap : list of snapshots you want to show, default ALL (-1)
+    '''
+    files = utils.find_outputs()
+    ToConsider, hid = utils.filter_outputs(snap=snap,hnum=hnum,timestep=timestep,Galaxy=Galaxy,bhid=bhid)
+    
+    ds = load_snap.load(1, verbose=False)
+    if ((type(radius) is int) | (type(radius) is float)):
+        width = (float(radius*(ds.length_unit/ds.parameters['aexp']).to('pc')/2**ds.parameters['levelmax']), 'pc')
+    elif (type(radius) is tuple):
+        if ((type(radius[0]) is int) | (type(radius) is float)) & (type(radius[1]) is str):
+            width = radius
+        else:
+            raise TypeError('Please give the radius with the form (10,\'pc\')')
+    else:
+        raise TypeError('Please give an int or a tuple like (10, \'pc\') for the radius')
+ 
+    res = np.array(Parallel(n_jobs=utils._get_ncpus())(delayed(_mean_density)(i, ToConsider, hid, width, bhid, files, Galaxy) for i in tqdm(range(len(files)))))
+    res = res[res>-1]
+    res = res.reshape(len(res) // 3, 3)
+    res=pd.DataFrame(res, columns=['t', 'rho_star', 'rho_gas'])
+    
+    res.to_csv('Density_'+utils._get_extension(hnum,timestep,Galaxy,bhid,radius), index=False)
+
+    return res
+
+def _mean_density(i, ToConsider, hid, width, bhid, files, Galaxy):
+    if ToConsider[i]:       
+        ds = load_snap.load(files[i], haloID=hid[i], Galaxy=Galaxy, bhID=bhid, radius=width, stars=True, verbose=False)
+        sp = load_snap.get_sphere(ds, bhid, hid[i], Galaxy, width)
+
+        t = ds.current_time.to('Myr')
+        
+        rho_star = sp[('stars','particle_mass')].sum() / (4/3*np.pi*ds.arr(width[0], width[1])**3)
+        rho_star = rho_star.to('Msun/pc**3')
+
+        rho_gas = sp[('gas','cell_mass')].sum() / (4/3*np.pi*ds.arr(width[0], width[1])**3)
+        rho_gas = rho_gas.to('Msun/pc**3')
+        
+        return [t, rho_star, rho_gas]
+    else:
+        return [-1,-1,-1]
+
