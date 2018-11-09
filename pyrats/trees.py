@@ -14,9 +14,8 @@ TODO:
 
 """
 import matplotlib
-#matplotlib.use('PDF')
 import numpy as np
-from matplotlib.backends.backend_pdf import PdfPages
+#from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.io import FortranFile as FF
@@ -40,8 +39,9 @@ class Forest(object):
     r,rvir -> Mpc
     """
 
-    def __init__(self, Galaxy=False):
-        paths = find_outputs()
+    def __init__(self, Galaxy=False, path='.'):
+        paths = find_outputs(path)
+        self.prefix = path
         ds = yt.load(paths[-1])
 
         _sim = {}
@@ -50,10 +50,10 @@ class Forest(object):
         _sim['Ol'] = ds.omega_lambda
         _sim['Lbox'] = float(ds.length_unit.in_units('Mpccm'))
 
-        treefolder = './Trees/'
+        treefolder = os.path.join(self.prefix, 'Trees')
         self.galaxies = False
         if Galaxy:
-            treefolder = './TreeStars/'
+            treefolder = os.path.join(self.prefix, 'TreeStars')
             self.galaxies = True
 
         self.treefolder = treefolder
@@ -73,12 +73,18 @@ class Forest(object):
         """
 
         if self.galaxies:
-            tree_file = '{}/tree.dat'.format(self.folder)
+            tree_file = os.path.join(self.folder, 'tree.dat')
             self = self._read_treeStars(tree_file)
         else:
-            tstep_file = '{}/tstep_file_{:03d}.001'.format(self.folder, self.snap)
-            tree_file = '{}/tree_file_{:03d}.001'.format(self.folder, self.snap)
-            props_file = '{}/props_{:03d}.001'.format(self.folder, self.snap)
+            tstep_file = os.path.join(
+                self.folder,
+                'tstep_file_{:03d}.001'.format(self.snap))
+            tree_file = os.path.join(
+                self.folder,
+                'tree_file_{:03d}.001'.format(self.snap))
+            props_file = os.path.join(
+                self.folder,
+                'props_{:03d}.001'.format(self.snap))
 
             self.timestep = self._read_timesteps_props(tstep_file)
             self.struct = self._read_tree_struct(tree_file)
@@ -90,15 +96,20 @@ class Forest(object):
 
         # Create halo_ts from the step in the tree
         self.trees['halo_ts'] = self.map_halo_ts_to_output(self.trees.tree_step)
-        aexp = self.timestep['aexp'][self.trees.tree_step.astype('int64')-1]
+        # aexp = self.timestep['aexp'][self.trees.tree_step.astype('int64')-1]
 
-        self.trees['x'] = self.trees['x'] * self.sim['Lbox'] / float(
-            self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
-        self.trees['y'] = self.trees['y'] * self.sim['Lbox'] / float(
-            self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
-        self.trees['z'] = self.trees['z'] * self.sim['Lbox'] / float(
-            self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
+        # # Convert to Mpccm
+        # self.trees['x'] = self.trees['x'] * self.sim['Lbox'] / float(
+        #     self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
+        # self.trees['y'] = self.trees['y'] * self.sim['Lbox'] / float(
+        #     self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
+        # self.trees['z'] = self.trees['z'] * self.sim['Lbox'] / float(
+        #     self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
 
+        # Convert to code length
+        factor = self.ds.domain_width.to('cm').value[0] / 3.08e24
+        for k in 'xyz':
+            self.trees[k] = self.trees[k] / factor + 0.5
         return
 
     def map_halo_ts_to_output(self, timestep):

@@ -90,7 +90,7 @@ def read_cooling(ds):
 
 
 def find_outputs(path='.'):
-    pattern = os.path.join('output_?????')
+    pattern = os.path.join(path, 'output_?????')
 
     outputs = []
     for d in sorted(glob(pattern)):

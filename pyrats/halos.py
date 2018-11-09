@@ -138,6 +138,7 @@ class HaloList(object):
 
         data = np.empty(shape=(0, len(halo_keys)), dtype=object)
         yt.funcs.mylog.debug('Reading halo catalog %s (ds=%s)' % (filename, data_set))
+        offsets = {}
         if os.path.exists(filename):
             with open(filename, 'rb') as f:
                 [npart] = fpu.read_vector(f, 'i')
@@ -161,7 +162,9 @@ class HaloList(object):
                 mylog.info('Brick: aexp        : %s' % aexp)
 
                 pbar = get_pbar('', nhalos+nsubs)
+
                 for ihalo in range(nhalos + nsubs):
+                    pos = f.tell()
                     [nbpart] = fpu.read_vector(f, 'i')                 # Number of particles
                     listp = fpu.read_vector(f, 'i')                    # List of the particles IDs
                     [ID] = fpu.read_vector(f, 'i')                     # Halo ID
@@ -192,6 +195,7 @@ class HaloList(object):
                                    a, b, c, ek, ep, et, rho0, r_c,
                                    spin, m, r, mvir, rvir, tvir, cvel]
                     pbar.update()
+                    offsets[ID] = pos
 
         print('')
         types = {}
@@ -217,6 +221,16 @@ class HaloList(object):
         halos.y = halos.y / scale_mpc + .5
         halos.z = halos.z / scale_mpc + .5
 
+        self.offsets = offsets
+
         return halos.set_index('ID')
 
+    def get_halo_parts(self, hid):
+        filename = '{s.folder}/Halos/{s.iout}/tree_bricks{s.iout:03d}'.format(
+            s=self)
+        with open(filename, 'br') as fd:
+            fd.seek(self.offsets[hid])
+            fpu.skip(fd, 1)
+            listp = fpu.read_vector(fd, 'i')
 
+        return listp
