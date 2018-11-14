@@ -96,20 +96,16 @@ class Forest(object):
 
         # Create halo_ts from the step in the tree
         self.trees['halo_ts'] = self.map_halo_ts_to_output(self.trees.tree_step)
-        # aexp = self.timestep['aexp'][self.trees.tree_step.astype('int64')-1]
+        iout = self.trees.tree_step.values.astype(int)-1
+        self.trees['aexp'] = self.timestep['aexp'][iout]
+        aexp = self.trees['aexp']
+        aexp_last = self.ds.parameters['aexp']
 
-        # # Convert to Mpccm
-        # self.trees['x'] = self.trees['x'] * self.sim['Lbox'] / float(
-        #     self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
-        # self.trees['y'] = self.trees['y'] * self.sim['Lbox'] / float(
-        #     self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
-        # self.trees['z'] = self.trees['z'] * self.sim['Lbox'] / float(
-        #     self.ds.length_unit.in_units('cm')) * 3.08e24 / aexp / (1 + self.ds.current_redshift)
+        factor = self.ds.domain_width.to('Mpc')[0].value * aexp / aexp_last
+        self.trees['x'] = self.trees['x'] / factor + 0.5
+        self.trees['y'] = self.trees['y'] / factor + 0.5
+        self.trees['z'] = self.trees['z'] / factor + 0.5
 
-        # Convert to code length
-        factor = self.ds.domain_width.to('cm').value[0] / 3.08e24
-        for k in 'xyz':
-            self.trees[k] = self.trees[k] / factor + 0.5
         return
 
     def map_halo_ts_to_output(self, timestep):
@@ -234,7 +230,7 @@ class Forest(object):
             my_index = tree.trees.loc[(tree.trees.halo_ts == ts) & (tree.trees.halo_num == hnum)].index.item()
         except ValueError:
             raise ValueError('It looks like there are no halos with this ID at this timestep')
-            
+
         child = tree.get_main_children(hnum, timestep)
         fathers = tree.get_main_progenitor(hnum, timestep)
         fathers = fathers.loc[fathers.index != my_index]
