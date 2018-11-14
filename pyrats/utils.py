@@ -177,5 +177,9 @@ def _get_extension(hnum=None, timestep=None, Galaxy=False, bhid=None, radius=Non
 
     return name
 
-
+def _mkdir(path):
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
 
