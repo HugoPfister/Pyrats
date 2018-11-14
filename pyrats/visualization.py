@@ -20,7 +20,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e5,
                    plotsinks=[0], plotparticles=False, sinkdynamics=0, BHcolor='black',
-                   snap=[-1], extension='pdf', method='integrate'):
+                   snap=[-1], extension='png', method='integrate'):
     """
     Visualization function, by default it is applied to ALL snapshots
 
@@ -120,7 +120,10 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         i = files.index(fn)
         if ToPlot[i]:
             ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
-            sp = load_snap.get_sphere(ds, bhid, haloid[i], Galaxy, width)
+            if center != [0.5,0.5,0.5]:
+                sp = ds.sphere(center, width)
+            else:
+                sp = load_snap.get_sphere(ds, bhid, haloid[i], Galaxy, width)
              
             if slice:
                 p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
