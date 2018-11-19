@@ -123,7 +123,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             if center != [0.5,0.5,0.5]:
                 sp = ds.sphere(center, width)
             else:
-                sp = load_snap.get_sphere(ds, bhid, haloid[i], Galaxy, width)
+                sp = load_snap.get_sphere(ds, width, bhid, haloid[i], Galaxy)
              
             if slice:
                 p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
