@@ -1,6 +1,5 @@
 import yt
 import glob
-from tqdm import tqdm
 import os as os
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d

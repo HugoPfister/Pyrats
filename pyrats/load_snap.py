@@ -2,6 +2,7 @@ import yt
 from yt.utilities.logger import ytLogger as mylog
 import numpy as np
 import os as os
+import numbers
 from glob import glob
 import pandas as pd
 
@@ -11,18 +12,55 @@ def load(files='',
          haloID=None, Galaxy=False, bhID=None, 
          radius=None, bbox=None,
          MatchObjects=False, fvir=[0.1,0.05,0.5],
-         stars=False, dm=False, verbose=True):
+         stars=False, dm=False, prefix='./', verbose=True):
     """
-    Read __init_.load function for infos
+    Loads a ramses output
+
+    Parameters
+    ----------
+    files : int or path
+       Path or output number to load.
+    haloID : int, optional
+       ID of the halo (or galaxy) to zoom on.
+    Galaxy : logical, optional
+       If true, interpret haloID as the id of a galaxy. Default: False
+    bhID : int, optional
+       ID of the black hole to zoom on.
+    radius : tuple, optional
+       Radius in the form of (value, unit).
+    bbox : array like
+       Bounding box of the region to load in code_unit, in the form of
+       [[left, bottom], [right, top]].
+    MathObjects : logical, optional
+       If True, match galaxies and BH to halos.
+    fvir : 3-tuple, optional
+       Fraction of the virial radius to look at when matching objects.
+         fvir[0] -> galaxies to halos
+         fvir[1] -> sinks to halos
+         fvir[2] -> sinks to galaxies
+    stars, dm : logical, optional
+       DEPRECATED. If true, add a filter to the dataset using the ids
+       and age of particles. See note
+    prefix : str, optional
+       Set this to the relative path to the root folder containing all
+       the outputs.
+
+    Note
+    ----
+
+    The star and dm filters are now obsolete, as the default behavior
+    of yt and RAMSES is to filter based on the particle family. If
+    your version of RAMSES is too old, you can still use stars and dm
+
     """
 
-    if type(files) in [int, np.int32, np.int64]:
-        if files != -1:
-            files = 'output_{files:05}/info_{files:05}.txt'.format(files=files)
+    if isinstance(files, numbers.Number):
+        if files == -1:
+            files = glob('output_?????/info_?????.txt')[-1]
         else:
-            files = glob('output_*/info_*.txt')[-1]
+            files = os.path.join(prefix, 'output_{files:05d}', 'info_{files:05d}.txt')\
+              .format(files=files)
 
-    yt.funcs.mylog.setLevel(40)
     ds = yt.load(files)
     if verbose:
         yt.funcs.mylog.setLevel(20)
@@ -32,14 +70,14 @@ def load(files='',
     mylog.info('Reading sinks')
     sinks = sink.get_sinks(ds)
 
-    hp = './'
+    hp = prefix
     p = os.path.join('Halos', str(ids), 'tree_bricks%.3i' % ids)
     halo_ok = os.path.exists(p)
     if not halo_ok & ds.cosmological_simulation == 1:
         mylog.warning('Could not find any Halo directory. Tried %s' % p)
 
     # load halos and galaxies
-    mylog.info('Reading halos and galaxies' )
+    mylog.info('Reading halos and galaxies')
     halo = halos.HaloList(ds, folder=hp, contam=False)
     gal = galaxies.GalList(ds, folder=hp, contam=False)
     halo.halos['pollution'] = 0
@@ -127,10 +165,15 @@ def load(files='',
             h = gal.gal.loc[haloID]
         else:
             h = halo.halos.loc[haloID]
-        center = np.copy([h.x.item(), h.y.item(), h.z.item()])
-        w = 2*h.r/float(ds.length_unit.in_units('Mpc'))
-        if radius is not None:
-            w = float(ds.arr(radius[0]*2, radius[1]).in_units('code_length'))
+        center = np.copy([h.x, h.y, h.z])
+        if type(radius) in (float, int):
+            Nrvir = radius
+            w = Nrvir*h.r/float(ds.length_unit.in_units('Mpc'))
+        elif radius is not None:
+            w = ds.quan(radius[0]*2, radius[1]).to('code_length').value
+        else:
+            w = 2*h.r/float(ds.length_unit.in_units('Mpc'))
+
         bbox = [center-w, center+w]
 
     if bhID is not None:
@@ -147,23 +190,23 @@ def load(files='',
                                                    ("particle_metallicity", "d")],
                      bbox=bbox)
     else:
-        ds = yt.load(files, bbox=bbox)
+        ds._bbox = bbox
 
     ds.halo = halo
     ds.gal  = gal
     ds.sink = sinks
 
     if stars:
-                mylog.info('Filtering stars')
-                yt.add_particle_filter("stars", function=fields.stars,
-                                       filtered_type="io")
-                ds.add_particle_filter("stars")
+        mylog.info('Filtering stars')
+        yt.add_particle_filter("stars", function=fields.stars,
+                               filtered_type="io")
+        ds.add_particle_filter("stars")
 
     if dm:
-                mylog.info('Filtering dark matter')
-                yt.add_particle_filter("dm", function=fields.dm,
-                                       filtered_type="io")
-                ds.add_particle_filter("dm")
+        mylog.info('Filtering dark matter')
+        yt.add_particle_filter("dm", function=fields.dm,
+                               filtered_type="io")
+        ds.add_particle_filter("dm")
 
     return ds
 
