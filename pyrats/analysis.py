@@ -123,17 +123,17 @@ def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
             #prog = tree.get_main_progenitor(hid, timestep=timestep).sort_values('halo_ts')
             prog['halo_ts'] -= FirstOutput
 
-            xh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.x*1000, kind='cubic')
-            yh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.y*1000, kind='cubic')
-            zh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.z*1000, kind='cubic')
+            xh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.x, kind='cubic')
+            yh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.y, kind='cubic')
+            zh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.z, kind='cubic')
 
             tmin=max(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1].min(),bh.t.min())
             tmax=min(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1].max(),bh.t.max())
             
         bh = bh.loc[(bh.t > tmin) & (bh.t < tmax)]
-        dx=xh(bh.t)-(bh.x-0.5)*Lbox 
-        dy=yh(bh.t)-(bh.y-0.5)*Lbox 
-        dz=zh(bh.t)-(bh.z-0.5)*Lbox 
+        dx=(xh(bh.t)-bh.x)*Lbox 
+        dy=(yh(bh.t)-bh.y)*Lbox 
+        dz=(zh(bh.t)-bh.z)*Lbox 
         
         z=np.copy([0]*len(bh.t))
         if ds.cosmological_simulation == 1:
