@@ -118,28 +118,27 @@ def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
                 tmax = min(Gal.t.max(),  bh.t.max())
 
         if hid > 0:
-            FirstOutput = tree.trees.halo_ts.min()
             prog = tree.get_family(hid, timestep=timestep)
-            #prog = tree.get_main_progenitor(hid, timestep=timestep).sort_values('halo_ts')
-            prog['halo_ts'] -= FirstOutput
 
-            xh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.x, kind='cubic')
-            yh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.y, kind='cubic')
-            zh = interp1d(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1], prog.z, kind='cubic')
+            time = prog.aexp.apply(lambda x: ds.cosmology.t_from_z(1/x-1).to('Gyr'))
+            #magic line to make it work better...
+            time -= time.tolist()[-1] - ds.cosmology.t_from_z(ds.current_redshift).to('Gyr').value
+            xh = interp1d(time, prog.x, kind='cubic')
+            yh = interp1d(time, prog.y, kind='cubic')
+            zh = interp1d(time, prog.z, kind='cubic')
 
-            tmin=max(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1].min(),bh.t.min())
-            tmax=min(tree.timestep['age'][prog.halo_ts.min():prog.halo_ts.max()+1].max(),bh.t.max())
+            tmin=max(time.min(),bh.t.min())
+            tmax=min(time.max(),bh.t.max())
             
         bh = bh.loc[(bh.t > tmin) & (bh.t < tmax)]
-        dx=(xh(bh.t)-bh.x)*Lbox 
-        dy=(yh(bh.t)-bh.y)*Lbox 
-        dz=(zh(bh.t)-bh.z)*Lbox 
+        dx=(xh(bh.t)-bh.x) 
+        dy=(yh(bh.t)-bh.y) 
+        dz=(zh(bh.t)-bh.z) 
         
-        z=np.copy([0]*len(bh.t))
-        if ds.cosmological_simulation == 1:
-            z=ds.cosmology.z_from_t(ds.arr(list(bh.t), 'Gyr'))
-        d+=[np.sqrt(dx**2+dy**2+dz**2)/(1+z)]
+        d+=[np.sqrt(dx**2+dy**2+dz**2)*Lbox]
         t+=[bh.t]
+        if ds.cosmological_simulation == 1:
+            d[-1] = d[-1] / (1+ds.cosmology.z_from_t(ds.arr(t[-1].tolist(), 'Gyr')))
 
     return d, t
 
