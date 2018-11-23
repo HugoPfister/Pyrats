@@ -94,14 +94,15 @@ class Forest(object):
             self.prop.set_index(self.struct.halo_id, inplace=True)
             self.trees = pd.concat([self.prop, self.struct], axis=1)
 
+        self.timestep['aexp'] = 1/(1+self.ds.cosmology.z_from_t(self.ds.arr(self.timestep['age'],'Gyr'))) 
         # Create halo_ts from the step in the tree
         self.trees['halo_ts'] = self.map_halo_ts_to_output(self.trees.tree_step)
         iout = self.trees.tree_step.values.astype(int)-1
         self.trees['aexp'] = self.timestep['aexp'][iout]
         aexp = self.trees['aexp']
-        aexp_last = self.ds.parameters['aexp']
+        aexp_last = self.timestep['aexp'].max() 
 
-        factor = self.ds.domain_width.to('Mpc')[0].value * aexp / aexp_last
+        factor = float(self.ds.length_unit.in_units('cm') / 3.08e24) * aexp / aexp_last 
         self.trees['x'] = self.trees['x'] / factor + 0.5
         self.trees['y'] = self.trees['y'] / factor + 0.5
         self.trees['z'] = self.trees['z'] / factor + 0.5
