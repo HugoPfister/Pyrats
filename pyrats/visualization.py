@@ -120,7 +120,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         i = files.index(fn)
         if ToPlot[i]:
             ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
-            if center != [0.5,0.5,0.5]:
+            if center != None:
                 sp = ds.sphere(center, width)
             else:
                 sp = load_snap.get_sphere(ds, width, bhid, haloid[i], Galaxy)
@@ -157,9 +157,9 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                         if sinkdynamics > 0:
                             ch=s.sink[bhnum]
                             ch = ch.loc[
-                             (ch.t>float((ds.current_time-
+                             (ch.t>float((ds.cosmology.t_from_z(ds.current_redshift)-
                                 ds.arr(sinkdynamics, 'Myr')).in_units('Gyr'))) &
-                             (ch.t<float((ds.current_time+
+                             (ch.t<float((ds.cosmology.t_from_z(ds.current_redshift)+
                                 ds.arr(sinkdynamics, 'Myr')).in_units('Gyr')))]
                             x=list(ch.x)
                             y=list(ch.y)
