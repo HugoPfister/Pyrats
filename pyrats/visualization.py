@@ -157,9 +157,9 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                         if sinkdynamics > 0:
                             ch=s.sink[bhnum]
                             ch = ch.loc[
-                             (ch.t>float((ds.cosmology.t_from_z(ds.current_redshift)-
+                             (ch.t>float((ds.current_time-
                                 ds.arr(sinkdynamics, 'Myr')).in_units('Gyr'))) &
-                             (ch.t<float((ds.cosmology.t_from_z(ds.current_redshift)+
+                             (ch.t<float((ds.current_time+
                                 ds.arr(sinkdynamics, 'Myr')).in_units('Gyr')))]
                             x=list(ch.x)
                             y=list(ch.y)
@@ -194,7 +194,9 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             if plotparticles:
                 p.annotate_particles(width)
 
-            p.set_cmap(field=field, cmap=cmap)
+            my_cmap = plt.matplotlib.cm.get_cmap(cmap)
+            my_cmap.set_bad(my_cmap(0))
+            p.set_cmap(field=field, cmap=my_cmap)
             p.set_background_color(field=field)
             if axis_units is None:
                 p.hide_axes()
