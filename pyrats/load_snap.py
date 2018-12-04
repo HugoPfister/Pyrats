@@ -61,9 +61,9 @@ def load(files='',
             files = os.path.join(prefix, 'output_{files:05d}', 'info_{files:05d}.txt')\
               .format(files=files)
 
+    if not verbose:
+        yt.funcs.mylog.setLevel(40)
     ds = yt.load(files)
-    if verbose:
-        yt.funcs.mylog.setLevel(20)
     ids = int(str(ds).split('_')[1])
 
     # read csv file for sinks
