@@ -160,7 +160,7 @@ class GalList(object):
                 mylog.info('Brick: sub gal   : %s' % nsubs)
                 mylog.info('Brick: aexp        : %s' % aexp)
 
-                pbar = get_pbar('', nhalos+nsubs)
+                #pbar = get_pbar('', nhalos+nsubs)
                 for ihalo in range(nhalos + nsubs):
                     [nbpart] = fpu.read_vector(f, 'i')  # Number of particles
                     listp = fpu.read_vector(f, 'i')  # List of the particles IDs
@@ -190,7 +190,7 @@ class GalList(object):
                                    a, b, c, ek, ep, et, rho0, r_c,
                                    spin, m, r, mvir, rvir, tvir, cvel,
                                    sigma, sigma_bulge, mbulge]
-                    pbar.update()
+                    #pbar.update()
 
         print('')
         types = {}

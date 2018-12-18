@@ -161,7 +161,7 @@ class HaloList(object):
                 mylog.info('Brick: sub halos   : %s' % nsubs)
                 mylog.info('Brick: aexp        : %s' % aexp)
 
-                pbar = get_pbar('', nhalos+nsubs)
+                #pbar = get_pbar('', nhalos+nsubs)
 
                 for ihalo in range(nhalos + nsubs):
                     pos = f.tell()
@@ -194,7 +194,7 @@ class HaloList(object):
                                    x, y, z, vx, vy, vz, Lx, Ly, Lz,
                                    a, b, c, ek, ep, et, rho0, r_c,
                                    spin, m, r, mvir, rvir, tvir, cvel]
-                    pbar.update()
+                    #pbar.update()
                     offsets[ID] = pos
 
         print('')
