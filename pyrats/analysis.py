@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 
 from . import halos, trees, sink, fields, utils, load_snap
 
-def profiles(ds, center=[0.5,0.5,0.5],
+def profiles(ds, center=None,
         rbound=[(0.01,'kpc'),(10, 'kpc')],
         n_bins=100, log=True,
         qtty=[('gas','density')],
@@ -39,31 +39,10 @@ def profiles(ds, center=[0.5,0.5,0.5],
     """
 
     yt.funcs.mylog.setLevel(40)
-    c = center
-    
-    if ((hnum != None) & (bhid != None)):
-        print('Please specify only hnum or bhid but not both')
-        return
-
-    if hnum != None:
-      if hnum > 0:
-        if Galaxy:
-            h = ds.gal.gal.loc[hnum]
-        else:
-            h = ds.halo.halos.loc[hnum]
-        c = [h.x.item(), h.y.item(), h.z.item()]
-      else:
-            print('Considering ideal simulation, GalCenter.csv must be present')
-            Gal=pd.read_csv('GalCenter.csv')
-            arg = np.abs(Gal.t - float(ds.current_time.in_units('Gyr'))).argmin()
-            h = Gal.loc[arg]
-            c = [h.cx.item(), h.cy.item(), h.cz.item()]
-
-    if bhid != None:
-        bh = ds.sink.loc[ds.sink.ID == bhid]
-        c = [bh.x.item(), bh.y.item(), bh.z.item()]
-
-    sp=ds.sphere(c, (rbound[1][0], rbound[1][1]))
+    if center != None:
+        sp = ds.sphere(center, width)
+    else:
+        sp = load_snap.get_sphere(ds, rbound[1], bhid, hnum, Galaxy)
 
     if filter != None:
         sp=ds.cut_region(sp, [filter])
@@ -91,29 +70,24 @@ def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
     if np.copy(IDhalos).max() > 0:
         tree = trees.Forest(Galaxy=Galaxy)
 
-    files = glob.glob('output*/info*')
-    files.sort()
-    ds=yt.load(files[-1])    
+    ds=load_snap.load(-1, verbose = False)    
     Lbox = float(ds.length_unit.in_units('kpc')*(1+ds.current_redshift))
     
-    files = glob.glob('./sinks/BH*')
-    files.sort()
-
     d=[]; t=[]    
     if len(IDsink) != len(IDhalos):
         print('Please put the same number of sinks and halos')
         return
 
     for i in range(len(IDsink)):
-        bh = pd.read_csv(files[IDsink[i]])
+        bh = pd.read_csv('./sinks/BH{:05}.csv'.format(IDsink[i]))
         bhid = IDsink[i]
         hid = IDhalos[i]
 
         if hid == -1:
                 Gal=pd.read_csv('GalCenter.csv')
-                xh = interp1d(Gal.t, (Gal.cx-0.5)*Lbox, kind='cubic')
-                yh = interp1d(Gal.t, (Gal.cy-0.5)*Lbox, kind='cubic')
-                zh = interp1d(Gal.t, (Gal.cz-0.5)*Lbox, kind='cubic')
+                xh = interp1d(Gal.t, Gal.cx, kind='cubic')
+                yh = interp1d(Gal.t, Gal.cy, kind='cubic')
+                zh = interp1d(Gal.t, Gal.cz, kind='cubic')
                 tmin = max(Gal.t.min(),  bh.t.min())
                 tmax = min(Gal.t.max(),  bh.t.max())
 
