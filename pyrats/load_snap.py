@@ -71,7 +71,7 @@ def load(files='',
     sinks = sink.get_sinks(ds)
 
     hp = prefix
-    p = os.path.join('Halos', str(ids), 'tree_bricks%.3i' % ids)
+    p = os.path.join(hp, 'Halos', str(ids), 'tree_bricks%.3i' % ids)
     halo_ok = os.path.exists(p)
     if not halo_ok & ds.cosmological_simulation == 1:
         mylog.warning('Could not find any Halo directory. Tried %s' % p)
