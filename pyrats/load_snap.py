@@ -56,14 +56,16 @@ def load(files='',
 
     if isinstance(files, numbers.Number):
         if files == -1:
-            files = glob('output_?????/info_?????.txt')[-1]
+            files = glob('output_?????/info_?????.txt')
+            files.sort()
+            files = files[-1]
         else:
             files = os.path.join(prefix, 'output_{files:05d}', 'info_{files:05d}.txt')\
               .format(files=files)
 
+    if not verbose:
+        yt.funcs.mylog.setLevel(40)
     ds = yt.load(files)
-    if verbose:
-        yt.funcs.mylog.setLevel(20)
     ids = int(str(ds).split('_')[1])
 
     # read csv file for sinks

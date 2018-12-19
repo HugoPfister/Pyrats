@@ -109,7 +109,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
     _mkdir(path)
 
 
-    ToPlot, haloid = utils.filter_outputs(snap=snap, hnum=hnum, timestep=timestep, Galaxy=Galaxy)
+    ToPlot, haloid = utils.filter_outputs(snap=snap, hnum=hnum, timestep=timestep, Galaxy=Galaxy, bhid=bhid)
     if sinkdynamics > 0:
         s = sink.Sinks()
 
@@ -120,10 +120,10 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
         i = files.index(fn)
         if ToPlot[i]:
             ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
-            if center != [0.5,0.5,0.5]:
+            if center != None:
                 sp = ds.sphere(center, width)
             else:
-                sp = load_snap.get_sphere(ds, bhid, haloid[i], Galaxy, width)
+                sp = load_snap.get_sphere(ds, width, bhid, haloid[i], Galaxy)
              
             if slice:
                 p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
@@ -178,9 +178,9 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                     ch = hds.loc[hid]
                     w = ds.arr(width[0], width[1])
                     if ((ch.m > masshalomin) &
-                        (((c[0] - ch.x.item())**2 +
-                          (c[1] - ch.y.item())**2 +
-                          (c[2] - ch.z.item())**2) <
+                        (((float(sp.center[0].to('code_length')) - ch.x.item())**2 +
+                          (float(sp.center[1].to('code_length')) - ch.y.item())**2 +
+                          (float(sp.center[2].to('code_length')) - ch.z.item())**2) <
                          ((w.in_units('code_length') / 2)**2))):
 
                         p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
@@ -194,7 +194,9 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             if plotparticles:
                 p.annotate_particles(width)
 
-            p.set_cmap(field=field, cmap=cmap)
+            my_cmap = plt.matplotlib.cm.get_cmap(cmap)
+            my_cmap.set_bad(my_cmap(0))
+            p.set_cmap(field=field, cmap=my_cmap)
             p.set_background_color(field=field)
             if axis_units is None:
                 p.hide_axes()

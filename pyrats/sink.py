@@ -28,7 +28,7 @@ class Sinks(object):
 
     def __init__(self, ExtraProps=False, ID=[-1]):
 
-        files = glob.glob('./sinks/BH*')
+        files = glob.glob('./sinks/BH?????.csv')
         files.sort()
 
         #snaps=glob.glob('output_*/info*')
