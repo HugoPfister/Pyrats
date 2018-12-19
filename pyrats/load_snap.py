@@ -84,8 +84,12 @@ def load(files='',
     gal = galaxies.GalList(ds, folder=hp, contam=False)
     halo.halos['pollution'] = 0
     # read purity of halos
-    if os.path.exists('./Halos/'+str(ids)+'/contam_halos{:03}'.format(ids)):
-        p = np.loadtxt('./Halos/'+str(ids)+'/contam_halos{:03}'.format(ids))
+    contam_file_path = os.path.join(prefix,
+                                    'Halos',
+                                    str(ids),
+                                    'contam_halos{:03}'.format(ids))
+    if os.path.exists(contam_file_path):
+        p = np.loadtxt(contam_file_path)
         if len(p) > 0:
             p = p.T
             halo.halos.loc[p[0], 'pollution'] = p[1]/p[2]
