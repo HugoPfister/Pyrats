@@ -45,7 +45,7 @@ class Sinks(object):
             files = [files[i] for i in ID]
 
         j=0
-        for f in tqdm(files):
+        for f in files:
             self.sink[ID[j]] = pd.read_csv(f)
             j+=1
 
