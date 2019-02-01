@@ -105,6 +105,7 @@ def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
             tmax=min(time.max(),bh.t.max())
             
         bh = bh.loc[(bh.t > tmin) & (bh.t < tmax)]
+        bh = bh.loc[::bh.shape[0]//500]
         dx=(xh(bh.t)-bh.x) 
         dy=(yh(bh.t)-bh.y) 
         dz=(zh(bh.t)-bh.z) 
@@ -115,6 +116,24 @@ def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
             d[-1] = d[-1] / (1+ds.cosmology.z_from_t(ds.arr(t[-1].tolist(), 'Gyr')))
 
     return d, t
+
+def dsink(ID1, ID2):
+    """
+    """
+    ds=load_snap.load(-1, verbose = False)    
+    Lbox = float(ds.length_unit.in_units('kpc')*(1+ds.current_redshift))
+    
+    bh1 = pd.read_csv('./sinks/BH{:05}.csv'.format(ID1))
+    bh1 = bh1.set_index('t')
+
+    bh2 = pd.read_csv('./sinks/BH{:05}.csv'.format(ID2))
+    bh2 = bh2.set_index('t')
+    
+    d = bh1[['x','y','z']] - bh2[['x','y','z']]
+    d = np.sqrt(np.sum(d**2, axis=1))
+    d = d.loc[d > 0]
+    
+    return d
 
 def mean_density(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None, radius=1):
     '''
