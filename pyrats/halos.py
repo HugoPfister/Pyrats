@@ -54,6 +54,26 @@ class HaloList(object):
 
         return halostr
 
+    def get_halo_sphere(self, hid, rvir_factor=5):
+        halo_spheres = getattr(self, '_halo_spheres', {})
+        if (hid, rvir_factor) in halo_spheres:
+            return halo_spheres[hid, rvir_factor]
+
+        tmp = self.halos.loc[hid, ['x', 'y', 'z', 'rvir', 'vx', 'vy', 'vz']]\
+          .values
+        center = self.ds.arr(tmp[:3], 'code_length')
+        radius = self.ds.arr(tmp[3] * rvir_factor, 'Mpc')
+        vel = self.ds.arr(tmp[4:7], 'km/s')
+
+        # Get a sphere centered on the halo
+        sphere = self.ds.sphere(center, radius)
+        sphere.set_field_parameter('bulk_velocity', vel)
+
+        halo_spheres[(hid, rvir_factor)] = sphere
+        self._halo_spheres = halo_spheres
+
+        return sphere
+
     def plot_halo(self, hid, rvir_factor=5, field=('deposit', 'all_density'), folder='./',
                   weight_field=('index', 'ones'), cmap='viridis', slice=False,
                   axis='z', **kwargs):
