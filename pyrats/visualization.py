@@ -3,6 +3,7 @@ import glob
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 from . import halos, trees, sink, analysis, load_snap, utils
 
@@ -191,18 +192,12 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                                          ch.z.item()], text='%s' % hid,
                                          text_args={'color' : BHcolor})
 
-            if plotparticles:
-                p.annotate_particles(width)
+            if plotparticles: p.annotate_particles(width)
 
             my_cmap = plt.matplotlib.cm.get_cmap(cmap)
             my_cmap.set_bad(my_cmap(0))
             p.set_cmap(field=field, cmap=my_cmap)
             p.set_background_color(field=field)
-            if axis_units is None:
-                p.hide_axes()
-                p.hide_colorbar()
-            else:
-                p.set_axes_unit(axis_units)
             if cbarbounds is not None:
                 if cbarunits is None:
                     print('Specify a units for the boundaries of the colorbar')
@@ -213,12 +208,39 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             else:
                 p.set_log(field, log=False)
 
-            p.annotate_scale(corner='upper_right', draw_inset_box=True)
-            p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
+            p.hide_colorbar()
+            p.hide_axes()
+
+            #p.annotate_scale(corner='upper_right', draw_inset_box=True,
+            #p.annotate_scale(pos=(0.88,0.93), draw_inset_box=True,
+            p.annotate_scale(draw_inset_box=True, corner='lower_right')#, text_args={'size':28})
+            #    text_args={'size':'40'}, pos=(0.87,0.13))
+            #p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
+            #p.annotate_timestamp(corner='upper_left', time=True, redshift=False,
+            p.annotate_timestamp(draw_inset_box=True,
+            #     text_args={'color':'white', 'size':'40', 'horizontalalignment':'right', 'verticalalignment':'bottom'},
+                time=True, redshift=False, corner='lower_left')#, text_args={'color':'white', 'size':28})
             p.set_width(width)
 
-
+            print('Saving ',path+'/'+str(ds)+'.'+extension)
+            #this line is here to effectively apply z_lim, units etc....
             p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
+
+            plot = p.plots[('deposit','stars_density')]
+            cbmap = plot.cb.mappable
+            current_cmap = cbmap.get_cmap()
+            current_cmap.set_bad(current_cmap(0))
+            cb_axes = inset_axes(plot.axes, width='80%', height='3%', loc=9)
+            cb_axes.tick_params(axis='x', which='major', length=4,
+                              labelcolor='w', direction='in', top=True)
+            cbar = plot.figure.colorbar(cbmap, cax=cb_axes, 
+                              orientation='horizontal')
+            label = plot.cax.get_ylabel()
+            if ('Stars' in label): label = label.replace('Stars', 'Stellar')
+            cbar.set_label(label, color='w')
+            cbar.ax.xaxis.label.set_font_properties(p._font_properties)
+            p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
+
     return
 
 
