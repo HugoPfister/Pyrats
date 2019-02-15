@@ -73,7 +73,7 @@ def load(files='',
     sinks = sink.get_sinks(ds)
 
     hp = prefix
-    p = os.path.join('Halos', str(ids), 'tree_bricks%.3i' % ids)
+    p = os.path.join(hp, 'Halos', str(ids), 'tree_bricks%.3i' % ids)
     halo_ok = os.path.exists(p)
     if not halo_ok & ds.cosmological_simulation == 1:
         mylog.warning('Could not find any Halo directory. Tried %s' % p)
@@ -84,8 +84,12 @@ def load(files='',
     gal = galaxies.GalList(ds, folder=hp, contam=False)
     halo.halos['pollution'] = 0
     # read purity of halos
-    if os.path.exists('./Halos/'+str(ids)+'/contam_halos{:03}'.format(ids)):
-        p = np.loadtxt('./Halos/'+str(ids)+'/contam_halos{:03}'.format(ids))
+    contam_file_path = os.path.join(prefix,
+                                    'Halos',
+                                    str(ids),
+                                    'contam_halos{:03}'.format(ids))
+    if os.path.exists(contam_file_path):
+        p = np.loadtxt(contam_file_path)
         if len(p) > 0:
             p = p.T
             halo.halos.loc[p[0], 'pollution'] = p[1]/p[2]
