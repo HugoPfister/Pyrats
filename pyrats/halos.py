@@ -16,6 +16,7 @@ from yt.utilities.logger import ytLogger as mylog
 import yt.utilities.fortran_utils as fpu
 from yt.funcs import get_pbar
 import os
+import pandas as pd
 
 
 class HaloList(object):
@@ -26,7 +27,18 @@ class HaloList(object):
 
         self.folder = folder
         self.iout = int(str(ds).split('_')[1])
-        self.halos = self._read_halos(data_set=ds, with_contam_option=contam)
+        if os.path.exists(
+            '{s.folder}/Halos/{s.iout}/tree_bricks{s.iout:03d}.hdf'.format(
+                    s=self)):
+            self.halos = pd.read_hdf(
+                '{s.folder}/Halos/{s.iout}/tree_bricks{s.iout:03d}.hdf'.format(
+                 s=self))
+        else:
+            self.halos = self._read_halos(data_set=ds, with_contam_option=contam)
+            if self.halos.index.size > 0:
+                self.halos.to_hdf(
+                    '{s.folder}/Halos/{s.iout}/tree_bricks{s.iout:03d}.hdf'.format(
+                     s=self), 'hdf')
         self.ds = ds
 
     def get_halo(self, hid, fname=None):
@@ -242,6 +254,7 @@ class HaloList(object):
         halos.z = halos.z / scale_mpc + .5
 
         self.offsets = offsets
+
 
         return halos.set_index('ID')
 

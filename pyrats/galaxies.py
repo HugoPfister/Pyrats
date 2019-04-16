@@ -26,6 +26,18 @@ class GalList(object):
 
         self.folder = folder
         self.iout = int(str(ds).split('_')[1])
+        if os.path.exists(
+            '{s.folder}/Galaxies/{s.iout}/tree_bricks{s.iout:03d}.hdf'.format(
+                    s=self)):
+            self.gal = pd.read_hdf(
+                '{s.folder}/Galaxies/{s.iout}/tree_bricks{s.iout:03d}.hdf'.format(
+                 s=self))
+        else:
+            self.gal = self._read_halos(data_set=ds, with_contam_option=contam)
+            if self.gal.index.size > 0:    
+                self.gal.to_hdf(
+                    '{s.folder}/Galaxies/{s.iout}/tree_bricks{s.iout:03d}.hdf'.format(
+                    s=self), 'hdf')
         self.gal = self._read_halos(data_set=ds, with_contam_option=contam)
         self.ds = ds
 
