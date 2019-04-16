@@ -40,7 +40,7 @@ def profiles(ds, center=None,
 
     yt.funcs.mylog.setLevel(40)
     if center != None:
-        sp = ds.sphere(center, width)
+        sp = ds.sphere(center, rbound[1])
     else:
         sp = load_snap.get_sphere(ds, rbound[1], bhid, hnum, Galaxy)
 
@@ -79,41 +79,44 @@ def dist_sink_to_halo(IDsink, IDhalos, timestep=None, Galaxy=False):
         return
 
     for i in range(len(IDsink)):
-        bh = pd.read_csv('./sinks/BH{:05}.csv'.format(IDsink[i]))
-        bhid = IDsink[i]
-        hid = IDhalos[i]
+        #if os.path.exists('./sinks/BH{:05}_halo{:05}_timestep{:03}'.format(IDsink[i], IDhalos[i]))
+        #else:
+            bh = pd.read_csv('./sinks/BH{:05}.csv'.format(IDsink[i]))
+            bhid = IDsink[i]
+            hid = IDhalos[i]
 
-        if hid == -1:
-                Gal=pd.read_csv('GalCenter.csv')
-                xh = interp1d(Gal.t, Gal.cx, kind='cubic')
-                yh = interp1d(Gal.t, Gal.cy, kind='cubic')
-                zh = interp1d(Gal.t, Gal.cz, kind='cubic')
-                tmin = max(Gal.t.min(),  bh.t.min())
-                tmax = min(Gal.t.max(),  bh.t.max())
+            if hid == -1:
+                    Gal=pd.read_csv('GalCenter.csv')
+                    xh = interp1d(Gal.t, Gal.cx, kind='cubic')
+                    yh = interp1d(Gal.t, Gal.cy, kind='cubic')
+                    zh = interp1d(Gal.t, Gal.cz, kind='cubic')
+                    tmin = max(Gal.t.min(),  bh.t.min())
+                    tmax = min(Gal.t.max(),  bh.t.max())
 
-        if hid > 0:
-            prog = tree.get_family(hid, timestep=timestep)
+            if hid > 0:
+                prog = tree.get_family(hid, timestep=timestep)
 
-            time = prog.aexp.apply(lambda x: ds.cosmology.t_from_z(1/x-1).to('Gyr'))
-            #magic line to make it work better...
-            time -= time.tolist()[-1] - ds.cosmology.t_from_z(ds.current_redshift).to('Gyr').value
-            xh = interp1d(time, prog.x, kind='cubic')
-            yh = interp1d(time, prog.y, kind='cubic')
-            zh = interp1d(time, prog.z, kind='cubic')
+                time = prog.aexp.apply(lambda x: ds.cosmology.t_from_z(1/x-1).to('Gyr'))
+                #magic line to make it work better...
+                time -= time.tolist()[-1] - ds.cosmology.t_from_z(ds.current_redshift).to('Gyr').value
+                xh = interp1d(time, prog.x, kind='cubic')
+                yh = interp1d(time, prog.y, kind='cubic')
+                zh = interp1d(time, prog.z, kind='cubic')
 
-            tmin=max(time.min(),bh.t.min())
-            tmax=min(time.max(),bh.t.max())
+                tmin=max(time.min(),bh.t.min())
+                tmax=min(time.max(),bh.t.max())
+                
+            bh = bh.loc[(bh.t > tmin) & (bh.t < tmax)]
+            bh = bh.loc[::bh.shape[0]//500]
+            dx=(xh(bh.t)-bh.x) 
+            dy=(yh(bh.t)-bh.y) 
+            dz=(zh(bh.t)-bh.z) 
             
-        bh = bh.loc[(bh.t > tmin) & (bh.t < tmax)]
-        bh = bh.loc[::bh.shape[0]//500]
-        dx=(xh(bh.t)-bh.x) 
-        dy=(yh(bh.t)-bh.y) 
-        dz=(zh(bh.t)-bh.z) 
-        
-        d+=[np.sqrt(dx**2+dy**2+dz**2)*Lbox]
-        t+=[bh.t]
-        if ds.cosmological_simulation == 1:
-            d[-1] = d[-1] / (1+ds.cosmology.z_from_t(ds.arr(t[-1].tolist(), 'Gyr')))
+            d+=[np.sqrt(dx**2+dy**2+dz**2)*Lbox]
+            t+=[bh.t]
+            if ds.cosmological_simulation == 1:
+                d[-1] = d[-1] / (1+ds.cosmology.z_from_t(ds.arr(t[-1].tolist(), 'Gyr')))
+
 
     return d, t
 
