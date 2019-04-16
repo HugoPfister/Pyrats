@@ -12,6 +12,8 @@ import os
 import yt
 from .import sink, trees
 
+cosmo = yt.utilities.cosmology.Cosmology()
+
 # Classes stuff
 class ImplementError(Exception):
     """Custom class for 'not implemented yet' errors"""
@@ -108,7 +110,7 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
     yt.funcs.mylog.setLevel(0)
     files = find_outputs()
     ToPlot = [True] * len(files)
-    hid = [None for f in files]
+    hid = [hnum for f in files]
 
     if snap != [-1]:
         for i in range(len(files)):
@@ -118,7 +120,7 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
         #print('Please specify only hnum or bhid but not both')
         raise AttributeError('Please specify only hnum or bhid but not both')
 
-    if hnum is not None:
+    if ((hnum is not None) and (len(snap) > 1)):
         t = trees.Forest(Galaxy=Galaxy)
         prog = t.get_family(hnum=hnum, timestep=timestep)
         for i in prog.index:
@@ -126,7 +128,7 @@ def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None)
         for i in range(len(files)):
             ToPlot[i] = (ToPlot[i]) & (i+1 in np.array(prog.halo_ts))
 
-    if bhid is not None:
+    if ((bhid is not None) and (len(snap) > 1)):
         s = sink.Sinks(ID=[bhid])
         tform = s.sink[bhid].t.min()
         tmerge = s.sink[bhid].t.max()
