@@ -13,14 +13,15 @@ def _mkdir(path):
     except FileExistsError:
         pass
 
-def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
+def plot_snapshots(axis='z', center=None,
                    field=('gas', 'density'),
                    weight_field=('index','ones'), slice=False,
-                   width=(10, 'kpc'), axis_units=None, folder='./',
+                   contour_field = None,
+                   width=(10, 'kpc'), folder='./',
                    cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e5,
-                   plotsinks=[0], plotparticles=False, sinkdynamics=0, BHcolor='black',
+                   plotsinks=[0], plotparticles=False, sinkdynamics=0, text_color='black',
                    snap=[-1], extension='png', method='integrate'):
     """
     Visualization function, by default it is applied to ALL snapshots
@@ -30,31 +31,31 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
     width : width of the window, default (10, 'kpc'), can be 'Rvir'
         in that case the size is set to the virial radius of each snapshots
-    axis_units : units for the x/y axis, units for the colorbar, if None then no axis 
-        both on x,y and the colorbar
     folder : folder to save the images
 
     field : yt field to show
     weight_field : yt field to use to weight, default ('index', 'ones')
     slice : True/False slice/projection, if True weight_field useless
+    contour_field: field to overplot as contour plot (eg. ('gas','density'))
 
     cbarunits : units for the colorbar, defaut units of field
     cbarbounds : limits for the cbar, in units of cbarunits
     cmap : cmap to use
     LogScale (True) : plot in log
 
-    hnum : ID of the halo, in the last output, you want to center the images
+    hnum : ID of the halo, in the last output if timestep is None, you want to center the images
+    timestep: timestep to consider the halo
+    Galaxy: consider galaxies instead of halos in hnum
+    bhid : ID of the sink you want to center the images
+    
     plothalos : circles around halos with a mass larger than masshalomin
     masshalomin : in Msun, minimum mass for the halo to show
-
-    bhid : ID of the sink you want to center the images
+    plotparticles: overplot the particles as black dots
     plotsinks : if -1 show sinks and their ID
                 if list shows only the asked ones
                 if [0] do not show
     sinkdynamics : draw lines to show BH dynamics between [t-sinkdynamics, t+sinkdynamics], in Myr
-    BHcolor : color to show BHs and their ID 
-
-    plotparticles: overplot the particles as black dots
+    text_color : color to show BHs and their ID, halos and colorbar
 
     snap : list of snapshots you want to show, default ALL (-1)
     """
@@ -125,7 +126,6 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                 sp = ds.sphere(center, width)
             else:
                 sp = load_snap.get_sphere(ds, width, bhid, haloid[i], Galaxy)
-             
             if slice:
                 p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
             else:
@@ -146,12 +146,12 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
                         p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
                                           marker='.', plot_args={
-                                              'color': BHcolor, 's': 100})
+                                              'color': text_color, 's': 100})
 
                         p.annotate_text(
                             [ch.x.item(), ch.y.item(), ch.z.item()],
                             text=str(ch.ID.item()),
-                            text_args={'color': BHcolor},
+                            text_args={'color': text_color},
                             inset_box_args={'alpha': 0.0}
                         )
 
@@ -168,7 +168,7 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
                             for i in range(len(x)-1):
                                 p.annotate_line([x[i],y[i],z[i]],
                                     [x[i+1],y[i+1],z[i+1]],
-                                    coord_system='data', plot_args={'color':BHcolor})
+                                    coord_system='data', plot_args={'color':text_color})
 
             if plothalos:
                 if plothalos == 'halos':
@@ -186,11 +186,11 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
 
                         p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
                                           (ch.rvir.item(), 'Mpc'),
-                                          circle_args={'color': BHcolor})
+                                          circle_args={'color': text_color})
 
                         p.annotate_text([ch.x.item(), ch.y.item(),
                                          ch.z.item()], text='%s' % hid,
-                                         text_args={'color' : BHcolor})
+                                         text_args={'color' : text_color})
 
             if plotparticles: p.annotate_particles(width)
 
@@ -211,34 +211,45 @@ def plot_snapshots(axis='z', center=[0.5,0.5,0.5],
             p.hide_colorbar()
             p.hide_axes()
 
-            #p.annotate_scale(corner='upper_right', draw_inset_box=True,
-            #p.annotate_scale(pos=(0.88,0.93), draw_inset_box=True,
-            p.annotate_scale(draw_inset_box=True, corner='lower_right')#, text_args={'size':28})
-            #    text_args={'size':'40'}, pos=(0.87,0.13))
-            #p.annotate_timestamp(corner='upper_left', time=True, redshift=True, draw_inset_box=True)
-            #p.annotate_timestamp(corner='upper_left', time=True, redshift=False,
-            p.annotate_timestamp(draw_inset_box=True,
-            #     text_args={'color':'white', 'size':'40', 'horizontalalignment':'right', 'verticalalignment':'bottom'},
-                time=True, redshift=False, corner='lower_left')#, text_args={'color':'white', 'size':28})
+            p.annotate_scale(draw_inset_box=True, corner='lower_right', text_args={'size':28})
+            #if files.index(fn)==1:
+            #    print(files.index(fn))
+            #    p.annotate_timestamp(draw_inset_box=True, time=True, redshift=False,
+            #        corner='lower_left', text_args={'color':'white', 'size':28},#)
+            #        time_offset=(1, 'Myr'))
+            #else:
+            p.annotate_timestamp(draw_inset_box=True, time=True, redshift=True,
+                    corner='lower_left', text_args={'color':'white', 'size':28})
             p.set_width(width)
 
             print('Saving ',path+'/'+str(ds)+'.'+extension)
             #this line is here to effectively apply z_lim, units etc....
             p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
 
-            plot = p.plots[('deposit','stars_density')]
+            plot = p.plots[field]
             cbmap = plot.cb.mappable
             current_cmap = cbmap.get_cmap()
             current_cmap.set_bad(current_cmap(0))
             cb_axes = inset_axes(plot.axes, width='80%', height='3%', loc=9)
             cb_axes.tick_params(axis='x', which='major', length=4,
-                              labelcolor='w', direction='in', top=True)
+                              labelcolor=text_color, direction='in', top=True)
             cbar = plot.figure.colorbar(cbmap, cax=cb_axes, 
                               orientation='horizontal')
             label = plot.cax.get_ylabel()
-            if ('Stars' in label): label = label.replace('Stars', 'Stellar')
-            cbar.set_label(label, color='w')
+            if (('Stars' in label) or ('Dm' in label)):
+                label = label.replace('Stars\ CIC', 'Stellar')
+                label = label.replace('Stars', 'Stellar')
+                label = label.replace('Star\ CIC', 'Stellar')
+                label = label.replace('Star', 'Stellar')
+                label = label.replace('Dm\ CIC', 'DM')
+                label = label.replace('Dm', 'DM')
+            cbar.set_label(label, color=text_color)
             cbar.ax.xaxis.label.set_font_properties(p._font_properties)
+            p._font_properties.set_size(25)
+            cbar.ax.tick_params(labelsize=25)
+            if contour_field is not None:
+                p.annotate_contour(contour_field,ncont=[-24,-23],
+                    plot_args = {'color':{'yellow','blue','black'}})
             p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
 
     return
