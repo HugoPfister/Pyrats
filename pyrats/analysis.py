@@ -11,7 +11,7 @@ from . import halos, trees, sink, fields, utils, load_snap
 
 def profiles(ds, center=None,
         rbound=[(0.01,'kpc'),(10, 'kpc')],
-        n_bins=100, log=True,
+        n_bins=128, log=True,
         qtty=[('gas','density')],
         weight_field=('index','cell_volume'), bin_fields=('index', 'radius'),
         hnum=None, Galaxy=False, bhid=None, 
@@ -39,6 +39,7 @@ def profiles(ds, center=None,
     """
 
     yt.funcs.mylog.setLevel(40)
+    ds = load_snap.load(int(str(ds)[-5:]), bhID = bhid, haloID=hnum, Galaxy=Galaxy, verbose = False, radius=rbound[1])
     if center != None:
         sp = ds.sphere(center, rbound[1])
     else:

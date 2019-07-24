@@ -63,9 +63,9 @@ def load(files='',
             files = os.path.join(prefix, 'output_{files:05d}', 'info_{files:05d}.txt')\
               .format(files=files)
 
+    ds = yt.load(files)
     if not verbose:
         yt.funcs.mylog.setLevel(40)
-    ds = yt.load(files)
     ids = int(str(ds).split('_')[1])
 
     # read csv file for sinks
@@ -165,6 +165,7 @@ def load(files='',
                 sinks[['hid','mhalo','galID','mgal','mbulge','sigma_bulge']].to_hdf(
                     './matching/'+str(ids)+'/sinks', key='hdf5')    
 
+    
     # Load only the relevant part of the simulation
     if haloID is not None:
         if Galaxy:
@@ -191,12 +192,15 @@ def load(files='',
             w = float(ds.arr(radius[0], radius[1]).in_units('code_length'))
         bbox = [center-w, center+w]
 
+    
     if stars or dm:
+        yt.funcs.mylog.setLevel(40)
         ds = yt.load(files, extra_particle_fields=[("particle_birth_time", "d"),
                                                    ("particle_metallicity", "d")],
                      bbox=bbox)
+        yt.funcs.mylog.setLevel(20)
     else:
-        ds._bbox = bbox
+        ds._bbox = bbox 
 
     ds.halo = halo
     ds.gal  = gal
@@ -225,13 +229,13 @@ def get_sphere(ds, width, bhid=None, hnum=None, Galaxy=None):
 
     if bhid is not None:
         h = ds.sink.loc[ds.sink.ID == bhid]
+        c = [h.x.item(), h.y.item(), h.z.item()]
 
     if hnum is not None:
         if Galaxy:
             h = ds.gal.gal.loc[hnum]
         else:
             h = ds.halo.halos.loc[hnum]
-    
-    c = [h.x.item(), h.y.item(), h.z.item()]
+        c = [h.x.item(), h.y.item(), h.z.item()]
     sp = ds.sphere(c, width)
     return sp

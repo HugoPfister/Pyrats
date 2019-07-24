@@ -21,7 +21,7 @@ def plot_snapshots(axis='z', center=None,
                    cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e5,
-                   plotsinks=[0], plotparticles=False, sinkdynamics=0, text_color='black',
+                   plotsinks=[0], plotparticles=[False,'type'], sinkdynamics=0, text_color='black',
                    snap=[-1], extension='png', method='integrate'):
     """
     Visualization function, by default it is applied to ALL snapshots
@@ -51,6 +51,7 @@ def plot_snapshots(axis='z', center=None,
     plothalos : circles around halos with a mass larger than masshalomin
     masshalomin : in Msun, minimum mass for the halo to show
     plotparticles: overplot the particles as black dots
+                    [True,'type'] to overplot and type for the type (cloud, stars...)
     plotsinks : if -1 show sinks and their ID
                 if list shows only the asked ones
                 if [0] do not show
@@ -121,6 +122,7 @@ def plot_snapshots(axis='z', center=None,
     for fn in yt.parallel_objects(files):
         i = files.index(fn)
         if ToPlot[i]:
+            print(fn, haloid[i])
             ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
             if center != None:
                 sp = ds.sphere(center, width)
@@ -192,7 +194,8 @@ def plot_snapshots(axis='z', center=None,
                                          ch.z.item()], text='%s' % hid,
                                          text_args={'color' : text_color})
 
-            if plotparticles: p.annotate_particles(width)
+            if plotparticles[0]:
+                p.annotate_particles(width, ptype=plotparticles[1])
 
             my_cmap = plt.matplotlib.cm.get_cmap(cmap)
             my_cmap.set_bad(my_cmap(0))
@@ -236,7 +239,7 @@ def plot_snapshots(axis='z', center=None,
             cbar = plot.figure.colorbar(cbmap, cax=cb_axes, 
                               orientation='horizontal')
             label = plot.cax.get_ylabel()
-            if (('Stars' in label) or ('Dm' in label)):
+            if (('Stars' in label) or ('Dm' in label) or ('Star' in label)):
                 label = label.replace('Stars\ CIC', 'Stellar')
                 label = label.replace('Stars', 'Stellar')
                 label = label.replace('Star\ CIC', 'Stellar')
