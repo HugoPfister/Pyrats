@@ -12,14 +12,13 @@ def load(files='',
          haloID=None, Galaxy=False, bhID=None,
          radius=None, bbox=None,
          MatchObjects=False, fvir=[0.1,0.05,0.5],
-         stars=False, dm=False, verbose=True):
+         old_ramses=False, verbose=True, prefix='./'):
     """
     Load a RAMSES output
     CARE : fields depend on the version of ramses
     * files: output/info from ramses, can be the ID of the output. If -1, load the last output
 
-    * stars (False): if True, then add a filter to select star particles
-    * dm (False): if True, then add a filter to select dm particles
+    * old_ramses (False): if True, then add a filter to select star/dm particles
 
     * MatchObjects: match galaxies and sinks to halos and sinks to galaxies
     * fvir is determines the fraction of the virial radii when matching:
@@ -39,6 +38,6 @@ def load(files='',
                         haloID=haloID, Galaxy=Galaxy, bhID=bhID,
                         MatchObjects=MatchObjects, fvir = fvir,
                         radius=radius, bbox=bbox,
-                        stars=stars, dm=dm, verbose=verbose)
+                        old_ramses=old_ramses, verbose=verbose, prefix=prefix)
 
     return ds
