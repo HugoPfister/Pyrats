@@ -41,6 +41,18 @@ class HaloList(object):
                      s=self), 'hdf')
         self.ds = ds
 
+        self.halos['bhid'] = -1 ; self.halos['galID'] = -1
+        self.halos['mgal'] = 0 ; self.halos['msink'] = 0
+        # read purity of halos
+        self.halos['pollution'] = 0
+        contam_file_path =  '{s.folder}/Halos/{s.iout}/contam_halos{s.iout:03d}'.format(
+                    s=self)
+        if os.path.exists(contam_file_path):
+            p = np.loadtxt(contam_file_path)
+            if len(p) > 0:
+                p = p.T
+                self.halos.loc[p[0], 'pollution'] = p[1]/p[2]
+
     def get_halo(self, hid, fname=None):
 
         halo = self.halos.loc[hid]

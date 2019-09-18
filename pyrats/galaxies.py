@@ -23,7 +23,6 @@ class GalList(object):
         """
         PandaList with halos and their properties
         """
-
         self.folder = folder
         self.iout = int(str(ds).split('_')[1])
         if os.path.exists(
@@ -38,8 +37,10 @@ class GalList(object):
                 self.gal.to_hdf(
                     '{s.folder}/Galaxies/{s.iout}/tree_bricks{s.iout:03d}.hdf'.format(
                     s=self), 'hdf')
-        self.gal = self._read_halos(data_set=ds, with_contam_option=contam)
         self.ds = ds
+   
+        self.gal['bhid'] = -1 ; self.gal['hid'] = -1
+        self.gal['msink'] = 0 ; self.gal['mhalo'] = 0  
 
    # def get_halo(self, hid, fname=None):
 
@@ -147,16 +148,15 @@ class GalList(object):
                      'sigma', 'sigma_bulge', 'mbulge')
         filename = '{s.folder}/Galaxies/{s.iout}/tree_bricks{s.iout:03d}'.format(
             s=self)
-
         
         data = np.empty(shape=(0, len(halo_keys)), dtype=object)
         if os.path.exists(filename):
             with open(filename, 'rb') as f:
                 [npart] = fpu.read_vector(f, 'i')
-                [massp] = fpu.read_vector(f, 'f')
-                [aexp] = fpu.read_vector(f, 'f')
-                [omega_t] = fpu.read_vector(f, 'f')
-                [age] = fpu.read_vector(f, 'f')
+                [massp] = fpu.read_vector(f, 'd')
+                [aexp] = fpu.read_vector(f, 'd')
+                [omega_t] = fpu.read_vector(f, 'd')
+                [age] = fpu.read_vector(f, 'd')
                 [nhalos, nsubs] = fpu.read_vector(f, 'i')
 
                 # Save the age/aexp, the mass of the particle,
@@ -179,16 +179,16 @@ class GalList(object):
                     [ID] = fpu.read_vector(f, 'i')  # Halo ID
                     fpu.skip(f, 1) # Skip timestep
                     [level, host, hostsub, nbsub, nextsub] = fpu.read_vector(f, 'i')
-                    [m] = fpu.read_vector(f, 'f')  # Total mass
-                    [x, y, z] = fpu.read_vector(f, 'f')  # Center
-                    [vx, vy, vz] = fpu.read_vector(f, 'f')  # Velocity
-                    [Lx, Ly, Lz] = fpu.read_vector(f, 'f')  # Angular momentum
-                    [r, a, b, c] = fpu.read_vector(f, 'f')  # Shape (ellipticity)
-                    [ek, ep, et] = fpu.read_vector(f, 'f')  # Energetics
-                    [spin] = fpu.read_vector(f, 'f')  # Total angular momentum
-                    [sigma, sigma_bulge, mbulge] = fpu.read_vector(f, 'f')
-                    [rvir, mvir, tvir, cvel] = fpu.read_vector(f, 'f')  # Virial parameters
-                    [rho0, r_c] = fpu.read_vector(f, 'f')  # ?
+                    [m] = fpu.read_vector(f, 'd')  # Total mass
+                    [x, y, z] = fpu.read_vector(f, 'd')  # Center
+                    [vx, vy, vz] = fpu.read_vector(f, 'd')  # Velocity
+                    [Lx, Ly, Lz] = fpu.read_vector(f, 'd')  # Angular momentum
+                    [r, a, b, c] = fpu.read_vector(f, 'd')  # Shape (ellipticity)
+                    [ek, ep, et] = fpu.read_vector(f, 'd')  # Energetics
+                    [spin] = fpu.read_vector(f, 'd')  # Total angular momentum
+                    [sigma, sigma_bulge, mbulge] = fpu.read_vector(f, 'd')
+                    [rvir, mvir, tvir, cvel] = fpu.read_vector(f, 'd')  # Virial parameters
+                    [rho0, r_c] = fpu.read_vector(f, 'd')  # ?
                     fpu.skip(f, 1)
                     fpu.skip(f, 1)
                     fpu.skip(f, 1)
