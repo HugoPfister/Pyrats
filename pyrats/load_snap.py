@@ -130,13 +130,13 @@ def load(files='',
                 extra_particle_fields=[("particle_birth_time", "d"),
                 ("particle_metallicity", "d")], bbox=bbox)
         mylog.info('Filtering stars')
-        yt.add_particle_filter("stars", function=fields.stars,
+        yt.add_particle_filter("star", function=fields.star,
                                filtered_type="io")
-        ds.add_particle_filter("stars")
+        ds.add_particle_filter("star")
         mylog.info('Filtering dark matter')
-        yt.add_particle_filter("dm", function=fields.dm,
+        yt.add_particle_filter("DM", function=fields._DM,
                                filtered_type="io")
-        ds.add_particle_filter("dm")
+        ds.add_particle_filter("DM")
         ds.sink = sinks
         ds.gal = gal
         ds.halo = halo

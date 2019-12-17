@@ -9,7 +9,7 @@
 # - Using this only remains VERY young stars (negligible) and cloud particles from BH
 
 
-def stars(pfilter, data):
+def _star(pfilter, data):
     '''
     Select stars particles
     '''
@@ -20,7 +20,7 @@ def stars(pfilter, data):
     return filter
 
 
-def dm(pfilter, data):
+def _DM(pfilter, data):
     '''
     Select DM particles
     '''
@@ -34,11 +34,15 @@ def dm(pfilter, data):
     return filter
 
 
-def young_stars(pfilter, data):
+def young_star(ds):
+    yt.add_particle_filter("young_star", function=fields._young_star,
+                  filtered_type="star")
+    ds.add_particle_filter("young_star")  
+    return ds
+
+def _young_star(pfilter, data):
     '''
     Select particles created after the beginning of the simulation,
     that are younger than 10Myr.'''
-    filter = ((data['io','particle_birth_time'] > 0) &
-              (data['io','particle_birth_time'] < data.ds.arr(10, 'Myr')) &
-              (data['io','particle_birth_time'] != None))
+    filter = data[('star','particle_age')] < data.ds.arr(10,'Myr')
     return filter
