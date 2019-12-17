@@ -11,7 +11,7 @@ import yt.units as constants
 def load(files='',
          haloID=None, Galaxy=False, bhID=None,
          radius=None, bbox=None,
-         MatchObjects=False, fvir=[0.1,0.05,0.5],
+         MatchObjects=False, fvir=[0.1,0.05,0.5], contam=False,
          old_ramses=False, verbose=True, prefix='./'):
     """
     Load a RAMSES output
@@ -36,7 +36,7 @@ def load(files='',
 
     ds = load_snap.load(files=files,
                         haloID=haloID, Galaxy=Galaxy, bhID=bhID,
-                        MatchObjects=MatchObjects, fvir = fvir,
+                        MatchObjects=MatchObjects, fvir = fvir, contam=contam,
                         radius=radius, bbox=bbox,
                         old_ramses=old_ramses, verbose=verbose, prefix=prefix)
 

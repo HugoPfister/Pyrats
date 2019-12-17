@@ -17,6 +17,7 @@ import os as os
 from scipy.interpolate import interp1d
 from yt.frontends.ramses.io import convert_ramses_ages
 from . import analysis 
+from yt.utilities.logger import ytLogger as mylog
 
 class Sinks(object):
     """
@@ -286,12 +287,13 @@ class Sinks(object):
 def get_sinks(ds):
     columns_name = ['ID', 'M', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'age', 'Mdot']
 
-    SinkFile = 'output' + str(ds)[-6:] + '/sink' + str(ds)[-6:] + '.csv'
+    SinkFile = ds.files + '/sink_{:05}.csv'.format(ds.ids)
 
     if os.path.isfile(SinkFile):
         sink = pd.read_csv(SinkFile, names=columns_name)
     else:
         sink = pd.DataFrame(columns = columns_name)
+        mylog.info('Did not find any sink file')
 
     if len(sink.ID) > 0:
         sink['M'] = sink.M * (ds.arr(1, 'code_mass').in_units('Msun'))
@@ -308,4 +310,10 @@ def get_sinks(ds):
         sink.x = sink.x / ds['boxlen'] 
         sink.y = sink.y / ds['boxlen'] 
         sink.z = sink.z / ds['boxlen'] 
+        
+        sink['hid'] = -1 ; sink['galID'] = -1
+        sink['mgal'] = 0 ; sink['mbulge'] = 0
+        sink['sigma_bulge'] = 0 ; sink['mhalo'] = 0
+
+
     return sink
