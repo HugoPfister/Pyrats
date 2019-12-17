@@ -74,7 +74,7 @@ class Forest(object):
             tree_file = os.path.join(self.folder, 'tree.dat')
             self = self._read_tree(tree_file, 'd', big_run)
         else:
-            tree_file = os.path.join(self.folder, 'tree.dat')
+            tree_file = glob('{}/tree_file_???.001'.format(self.folder))[0]
             self = self._read_tree(tree_file, 'f', big_run)
 
         return
@@ -118,37 +118,21 @@ class Forest(object):
         else:
             ts = timestep
 
-        if self.galaxies:
-            progenitors = self.trees.loc[(self.trees.halo_num == hnum) & (self.trees.halo_ts == ts)]
-            if len(progenitors) == 0:
-                return
-            else:
-                if len(progenitors.fathersID.item()) == 1:
-                    return progenitors
-                else:
-                    fathers = (progenitors.fathersID.item() > 0) #to exclude accreted mass
-                    fathersID = progenitors.fathersID.item()[fathers]
-                    fatherID = progenitors.fatherMass.item()[fathers].argmax()
-                    fatherID = fathersID[fatherID]
-                    progenitors = pd.concat([progenitors, self.get_main_progenitor(fatherID, ts-1)])
-                    return progenitors
-
-        else:
-            list_progenitors = [(hnum, ts)]
-            fatherMass = self.trees.loc[hnum,timestep].fatherMass
-            fathersID = self.trees.loc[hnum,timestep].fathersID
-            while (fathersID.size > 1):
-                #update ts
-                ts -= 1
-                #remove background
-                fatherMass = fatherMass[fathersID > 0]
-                fathersID = fathersID[fathersID > 0]
-                #main father is the one that contains most mass
-                main_father = fathersID[fatherMass.argmax()]
-                list_progenitors += [(main_father, ts)]
-                fatherMass = self.trees.loc[main_father, ts].fatherMass
-                fathersID = self.trees.loc[main_father, ts].fathersID
-            main_progs = self.trees.loc[list_progenitors]
+        list_progenitors = [(hnum, ts)]
+        fatherMass = self.trees.loc[hnum,timestep].fatherMass
+        fathersID = self.trees.loc[hnum,timestep].fathersID
+        while (fathersID.size > 1):
+            #update ts
+            ts -= 1
+            #remove background
+            fatherMass = fatherMass[fathersID > 0]
+            fathersID = fathersID[fathersID > 0]
+            #main father is the one that contains most mass
+            main_father = fathersID[fatherMass.argmax()]
+            list_progenitors += [(main_father, ts)]
+            fatherMass = self.trees.loc[main_father, ts].fatherMass
+            fathersID = self.trees.loc[main_father, ts].fathersID
+        main_progs = self.trees.loc[list_progenitors]
 
         return main_progs
 
@@ -165,27 +149,13 @@ class Forest(object):
         else:
             ts = timestep
 
-        if self.galaxies:
-            childs = tree.trees.loc[(tree.trees.halo_num == hnum) & (tree.trees.halo_ts == cts)]
-            if len(childs) == 0:
-                return
-            else:
-                if len(childs.sonsID.item()) == 0:
-                    return childs
-                else:
-                    sons = pd.concat([tree.trees.loc[(tree.trees.halo_num == sonID) & (tree.trees.halo_ts == cts+1)] for sonID in childs.sonsID.item()])
-                    sons = sons.loc[sons.m == sons.m.max()]
-                    childs = pd.concat([childs, tree.get_main_children(sons.halo_num.item(), cts+1)])
-                    return childs
-
-        else:
-            list_sons = [(hnum, ts)]
-            while (ts < max_ts):
-                main_son = self.trees.loc[hnum,ts].mainSon
-                #update ts
-                ts += 1
-                list_sons += [(main_son, ts)]
-            children = self.trees.loc[list_sons]
+        list_sons = [(hnum, ts)]
+        while (ts < max_ts):
+            main_son = self.trees.loc[hnum,ts].mainSon
+            #update ts
+            ts += 1
+            list_sons += [(main_son, ts)]
+        children = self.trees.loc[list_sons]
 
         return children
 
@@ -710,8 +680,11 @@ class Forest(object):
             mainSon = []
         else:
             sonsID = fpu.read_vector(F, 'i')
-            mainSon = fpu.read_vector(F, 'i')[0]
-        [rvir, mvir, tvir, cvel] = fpu.read_vector(F, precision)
+        mainSon = fpu.read_vector(F, 'i')[0]
+        if self.galaxies:
+            [rvir, mvir, tvir, cvel,Reff] = fpu.read_vector(F, precision)
+        else:
+            [rvir, mvir, tvir, cvel] = fpu.read_vector(F, precision)
         [rho_0, r_c] = fpu.read_vector(F, precision)
         if not big_run:
             fpu.read_vector(F, 'i')  # ncont
@@ -719,15 +692,17 @@ class Forest(object):
         return (ID, timestep, level, hosthaloID, hostsubID, m,
                            dmacc, x, y, z, vx, vy, vz, Lx, Ly, Lz, r, a, b,
                            c, ek, ep, et, spin, rvir, mvir, tvir, cvel,
-                           fatherID, fatherMass, sonsID, mainSon)
+                           fatherID, fatherMass, sonsID, mainSon, Reff)
 
 
     def _read_tree(self, tree_file, precision, big_run=False):
-        Key_tree = (
+        Key_tree = [
             'halo_num', 'tree_step', 'level', 'host_halo_id', 'host_sub_id', 'm',
             'dmacc', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'Lx', 'Ly', 'Lz', 'r',
             'a', 'b', 'c', 'ek', 'ep', 'et', 'spin', 'rvir', 'mvir', 'tvir',
-            'cvel', 'fathersID', 'fatherMass', 'sonsID', 'mainSon')
+            'cvel', 'fathersID', 'fatherMass', 'sonsID', 'mainSon']
+        if self.galaxies:
+            Key_tree += ['Reff']
 
         with open(tree_file, 'rb') as F:
             self.timestep = {}
