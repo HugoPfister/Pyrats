@@ -1,18 +1,17 @@
-from . import halos, fields, visualization, utils, physics, sink, analysis, \
-    load_snap, trees
+#from . import halos, fields, visualization, utils, physics, sink, analysis, \
+ #   load_snap, trees
+from . import load_snap
 
-load = load_snap.load
-
-__all__ = ['halos', 'utils', 'trees', 'visualization',
-           'fields', 'physics', 'sink', 'analysis']
+#__all__ = ['utils', 'trees', 'visualization',
+#           'fields', 'physics', 'sink', 'analysis']
 
 import yt.units as constants
 
 def load(files='',
          haloID=None, Galaxy=False, bhID=None,
          radius=None, bbox=None,
-         MatchObjects=False, fvir=[0.1,0.05,0.5], contam=False,
-         old_ramses=False, verbose=True, prefix='./'):
+         MatchObjects=False, fvir=[1,0.1,'r90'], contam=False,
+         old_ramses=False, verbose=True, prefix='.'):
     """
     Load a RAMSES output
     CARE : fields depend on the version of ramses

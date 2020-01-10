@@ -7,12 +7,12 @@ from glob import glob
 import pandas as pd
 from tqdm import tqdm
 
-from . import halos, fields, sink, galaxies, utils
+from . import fields, sink, galaxies, utils
 
 def load(files='',
          haloID=None, Galaxy=False, bhID=None, 
          radius=None, bbox=None,
-         MatchObjects=False, fvir=[0.1,0.05,0.5], contam=False,
+         MatchObjects=False, fvir=[1, 90], contam=False,
          old_ramses=False, prefix='./', verbose=True):
     """
     Loads a ramses output
@@ -83,7 +83,7 @@ def load(files='',
 
     # load halos and galaxies
     mylog.info('Reading halos and galaxies')
-    gal = galaxies.GalList(ds, contam=contam)
+    gal = galaxies.GalList(ds, contam=contam, prefix=ds.prefix)
 
     ds.sink = sinks
     ds.gal = gal
@@ -170,11 +170,8 @@ def get_sphere(ds, width, bhid=None, hnum=None, Galaxy=None):
     return sp
 
 def matching(ds, fvir):
-        path = './matching/{}_{}_{}/{}'.format(fvir[0],fvir[1],fvir[2], ds.ids)
+        path = ds.prefix+'/matching/{}_{}/{}'.format(fvir[0], fvir[1], fvir[2], ds.ids)
         if os.path.exists(path):
-            dummy = pd.read_hdf(path+'/halo')
-            for c in dummy.columns:
-                ds.halo.halos[c] = dummy[c]
             dummy = pd.read_hdf(path+'/gal')
             for c in dummy.columns:
                 ds.gal.gal[c] = dummy[c]

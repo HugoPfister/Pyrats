@@ -16,8 +16,9 @@ import glob as glob
 import os as os
 from scipy.interpolate import interp1d
 from yt.frontends.ramses.io import convert_ramses_ages
-from . import analysis 
 from yt.utilities.logger import ytLogger as mylog
+
+from . import analysis 
 
 class Sinks(object):
     """
@@ -314,6 +315,5 @@ def get_sinks(ds):
         sink['hid'] = -1 ; sink['galID'] = -1
         sink['mgal'] = 0 ; sink['mbulge'] = 0
         sink['sigma_bulge'] = 0 ; sink['mhalo'] = 0
-
 
     return sink

@@ -14,20 +14,24 @@ import os
 
 
 class GalList(object):
-    def __init__(self, ds, contam=False):
+    def __init__(self, ds, contam=False, prefix=''):
         self.iout = ds.ids
         self.ds = ds
-        filename = ds.prefix+'/Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout)
+        self.prefix = prefix
+        filename = self.prefix+'/Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout)
         if os.path.exists(filename):
             self.gal = pd.read_hdf(filename)
         else:
+            mylog.info('Did not find {}'.format(filename))
             filename = './Structures/AdaptaHOP/tree_bricks{:03}'.format(self.iout)
             if os.path.exists(filename):
                 self.gal = self._read_halos(contam,filename)
                 if self.gal.index.size > 0:    
-                    self.gal.to_hdf(
-                        './Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout), 'hdf5')
+                    print('./Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout))
+                #    self.gal.to_hdf(
+                #        './Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout), 'hdf5')
             else:
+                mylog.info('Did not find {}'.format(filename))
                 mylog.info('Did not find any tree_brick file.')
 
 
@@ -188,6 +192,9 @@ class GalList(object):
 
                     pbar.update()
 
+                #[scale_l] = fpu.read_vector(f, prec)
+                #print('scale_l', scale_l)
+
         types = {}
         for k in ('ID', 'nbpart', 'level', 'min_part_id',
                   'host', 'hostsub', 'nbsub', 'nextsub', 'contam',
@@ -284,5 +291,32 @@ class GalList(object):
         halos['within_host'] = np.logical_and(dist_to_host_rvir <= 1, halos.level.values > 1)
         
         return halos
+
+    def _load_particles(self, IDgal):
+        data = pd.DataFrame({'x':[], 'y':[], 'z':[], 'm':[], 'r_pc':[]})
+        with open(self.prefix+'/Structures/AdaptaHOP/GAL_{:05}/gal_stars_{:07}'.format(
+                    self.iout, IDgal), 'rb') as f:
+                    (fpu.read_vector(f, 'i'))
+                    (fpu.read_vector(f, 'i'))
+                    (fpu.read_vector(f, 'd'))
+                    xgal = fpu.read_vector(f, 'd')
+                    fpu.read_vector(f, 'd')
+                    fpu.read_vector(f, 'd')
+                    fpu.read_vector(f, 'i')
+                    x=fpu.read_vector(f, 'd')
+                    y=fpu.read_vector(f, 'd')
+                    z=fpu.read_vector(f, 'd')
+                    fpu.read_vector(f, 'd')
+                    fpu.read_vector(f, 'd')
+                    fpu.read_vector(f, 'd')
+                    m=fpu.read_vector(f, 'd')
+
+                    data['x'] = x-xgal[0]
+                    data['y'] = y-xgal[1]
+                    data['z'] = z-xgal[2]
+                    data['m'] = m
+                    data['r_pc'] = (data[['x','y','z']]**2).sum(axis=1)**0.5*1e6
+        return data
+                        
 
 
