@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from joblib import Parallel, delayed
 
-from . import halos, trees, sink, fields, utils, load_snap
+from . import trees, sink, fields, utils, load_snap
 
 def profiles(ds, center=None,
         rbound=[(0.01,'kpc'),(10, 'kpc')],

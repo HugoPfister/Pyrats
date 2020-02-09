@@ -130,7 +130,7 @@ def load(files='',
                 extra_particle_fields=[("particle_birth_time", "d"),
                 ("particle_metallicity", "d")], bbox=bbox)
         mylog.info('Filtering stars')
-        yt.add_particle_filter("star", function=fields.star,
+        yt.add_particle_filter("star", function=fields._star,
                                filtered_type="io")
         ds.add_particle_filter("star")
         mylog.info('Filtering dark matter')
@@ -139,7 +139,6 @@ def load(files='',
         ds.add_particle_filter("DM")
         ds.sink = sinks
         ds.gal = gal
-        ds.halo = halo
         if MatchObjects: matching(ds, fvir)
         yt.funcs.mylog.setLevel(20)
     ###########################
@@ -239,8 +238,6 @@ def matching(ds, fvir):
                 
             ds.gal.gal[['bhid','hid','msink','mhalo']].to_hdf(
                     path+'/gal', key='hdf5')    
-            ds.halo.halos[['bhid','galID','msink','mgal']].to_hdf(
-                    path+'/halo', key='hdf5')    
             ds.sink[['hid','mhalo','galID','mgal','mbulge','sigma_bulge']].to_hdf(
                     path+'/sinks', key='hdf5')   
 

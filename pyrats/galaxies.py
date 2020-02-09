@@ -22,12 +22,11 @@ class GalList(object):
         if os.path.exists(filename):
             self.gal = pd.read_hdf(filename)
         else:
-            mylog.info('Did not find {}'.format(filename))
             filename = './Structures/AdaptaHOP/tree_bricks{:03}'.format(self.iout)
             if os.path.exists(filename):
                 self.gal = self._read_halos(contam,filename)
                 if self.gal.index.size > 0:    
-                    print('./Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout))
+                    print('writing ./Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout))
                 #    self.gal.to_hdf(
                 #        './Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout), 'hdf5')
             else:
@@ -296,9 +295,9 @@ class GalList(object):
         data = pd.DataFrame({'x':[], 'y':[], 'z':[], 'm':[], 'r_pc':[]})
         with open(self.prefix+'/Structures/AdaptaHOP/GAL_{:05}/gal_stars_{:07}'.format(
                     self.iout, IDgal), 'rb') as f:
-                    (fpu.read_vector(f, 'i'))
-                    (fpu.read_vector(f, 'i'))
-                    (fpu.read_vector(f, 'd'))
+                    fpu.read_vector(f, 'i')
+                    fpu.read_vector(f, 'i')
+                    fpu.read_vector(f, 'd')
                     xgal = fpu.read_vector(f, 'd')
                     fpu.read_vector(f, 'd')
                     fpu.read_vector(f, 'd')
