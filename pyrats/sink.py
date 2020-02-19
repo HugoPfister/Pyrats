@@ -28,7 +28,7 @@ class Sinks(object):
     ID : [-1] read all sinks, [i,j] read sinks i and j only
     """
 
-    def __init__(self, ExtraProps=False, ID=[-1]):
+    def __init__(self, ID=[-1]):
 
         files = glob.glob('./sinks/BH?????.csv')
         files.sort()

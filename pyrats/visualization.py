@@ -5,13 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-from . import halos, trees, sink, analysis, load_snap, utils
-
-def _mkdir(path):
-    try:
-        os.mkdir(path)
-    except FileExistsError:
-        pass
+from . import sink, analysis, load_snap, utils
 
 def plot_snapshots(axis='z', center=None,
                    field=('gas', 'density'),
@@ -22,7 +16,7 @@ def plot_snapshots(axis='z', center=None,
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e5,
                    plotsinks=[0], plotparticles=[False,'type'], sinkdynamics=0, text_color='black',
-                   snap=[-1], extension='png', method='integrate'):
+                   snap=[-1], extension='png', method='integrate', old_ramses=False):
     """
     Visualization function, by default it is applied to ALL snapshots
 
@@ -62,201 +56,56 @@ def plot_snapshots(axis='z', center=None,
     """
 
     yt.funcs.mylog.setLevel(40)
-    files = utils.find_outputs()
-    path = os.path.join(folder, 'snapshots')
-    _mkdir(path)
-
-    if hnum is not None:
-        if Galaxy:
-            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(
-                hnum, timestep))
-        else:
-            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(
-                hnum, timestep))
-        _mkdir(path)
-
-    if bhid is not None:
-        path = os.path.join(path, 'BH%s' % bhid)
-        _mkdir(path)
-
-    if slice:
-        path = os.path.join(path, 'Slice')
-        _mkdir(path)
-    else:
-        path = os.path.join(path, 'Proj')
-        _mkdir(path)
-
-    if width is not None:
-        if width == 'Rvir':
-            path = os.path.join(path, 'rvir')
-        else:
-            path = os.path.join(path, '%s%s' % (width[0], width[1]))
-        _mkdir(path)
-
-    path = os.path.join(path, '%s%s' % (field[0], field[1]))
-    _mkdir(path)
-    path = os.path.join(path, 'Axis_%s' % axis)
-    _mkdir(path)
-    if LogScale:
-        path = os.path.join(path, 'LogScale')
-    else:
-        path = os.path.join(path, 'LinScale')
-    _mkdir(path)
-
-    if plotsinks == [0]:
-        path = os.path.join(path, 'NoBH')
-    elif plotsinks == [-1]:
-        path = os.path.join(path, 'AllBH')
-    else:
-        path = os.path.join(path, 'SomeBH')
-    _mkdir(path)
-
-
+    files = utils.find_outputs('./Outputs')
+    if ((hnum != None) & (timestep == None)):
+        timestep = snap[-1]
+    path = _make_path(folder, hnum, Galaxy, bhid, slice, width, field, axis, LogScale, plotsinks, timestep)
     ToPlot, haloid = utils.filter_outputs(snap=snap, hnum=hnum, timestep=timestep, Galaxy=Galaxy, bhid=bhid)
     if sinkdynamics > 0:
         s = sink.Sinks()
-
-    part=False
-    if (('stars' in field[1]) or ('dm' in field[1])): part=True
 
     for fn in yt.parallel_objects(files):
         i = files.index(fn)
         if ToPlot[i]:
             print(fn, haloid[i])
-            ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, stars=part, dm=part, verbose=False)
+            ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, old_ramses=old_ramses, verbose=False)
             if center != None:
                 sp = ds.sphere(center, width)
             else:
                 sp = load_snap.get_sphere(ds, width, bhid, haloid[i], Galaxy)
+            normal = _get_axis(axis, ds, haloid[i])
             if slice:
-                p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, center=sp.center, width=width)
+                #p = yt.OffAxisSlicePlot(ds, data_source=sp, normal=normal, fields=field, width=width)
+                p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, width=width)
             else:
+                print(sp[field], ds, sp, normal, field, weight_field, width, method)
+                #p = yt.OffAxisProjectionPlot(ds, data_source=sp, normal=normal, fields=field, weight_field=weight_field,
+                #                      width=width, method=method)
                 p = yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
-                                      center=sp.center, width=width, method=method)
+                                                      center=sp.center, width=width, method=method)
+
+            print(p)
+            p.save(path+'/'+str(ds)+'0.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
 
             if (plotsinks != [0]):
-                if plotsinks == [-1]:
-                    BHsToShow = ds.sink.ID
-                else:
-                    BHsToShow = np.intersect1d(plotsinks , ds.sink.ID)
-                for bhnum in BHsToShow:
-                    ch = ds.sink.loc[ds.sink.ID == bhnum]
-                    if (((float(sp.center[0].to('code_length')) - ch.x.item())**2 +
-                        (float(sp.center[1].to('code_length')) - ch.y.item())**2 +
-                        (float(sp.center[2].to('code_length')) - ch.z.item())**2) <
-                        ((sp.radius.in_units('code_length') / 2)**2)):
-
-                        p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
-                                          marker='.', plot_args={
-                                              'color': text_color, 's': 100})
-
-                        p.annotate_text(
-                            [ch.x.item(), ch.y.item(), ch.z.item()],
-                            text=str(ch.ID.item()),
-                            text_args={'color': text_color},
-                            inset_box_args={'alpha': 0.0}
-                        )
-
-                        if sinkdynamics > 0:
-                            ch=s.sink[bhnum]
-                            ch = ch.loc[
-                             (ch.t>float((ds.current_time-
-                                ds.arr(sinkdynamics, 'Myr')).in_units('Gyr'))) &
-                             (ch.t<float((ds.current_time+
-                                ds.arr(sinkdynamics, 'Myr')).in_units('Gyr')))]
-                            x=list(ch.x)
-                            y=list(ch.y)
-                            z=list(ch.z)
-                            for i in range(len(x)-1):
-                                p.annotate_line([x[i],y[i],z[i]],
-                                    [x[i+1],y[i+1],z[i+1]],
-                                    coord_system='data', plot_args={'color':text_color})
-
-            if plothalos:
-                if plothalos == 'halos':
-                    hds = ds.halo.halos
-                if plothalos == 'galaxies':
-                    hds = ds.gal.gal 
-                for hid in hds.index:
-                    ch = hds.loc[hid]
-                    w = ds.arr(width[0], width[1])
-                    if ((ch.m > masshalomin) &
-                        (((float(sp.center[0].to('code_length')) - ch.x.item())**2 +
-                          (float(sp.center[1].to('code_length')) - ch.y.item())**2 +
-                          (float(sp.center[2].to('code_length')) - ch.z.item())**2) <
-                         ((w.in_units('code_length') / 2)**2))):
-
-                        p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
-                                          (ch.rvir.item(), 'Mpc'),
-                                          circle_args={'color': text_color})
-
-                        p.annotate_text([ch.x.item(), ch.y.item(),
-                                         ch.z.item()], text='%s' % hid,
-                                         text_args={'color' : text_color})
-
+                p = _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics)
+                
+            if plothalos != False:
+                p = _add_halos(ds, plothalos, masshalomin, p, text_color)
+            
             if plotparticles[0]:
                 p.annotate_particles(width, ptype=plotparticles[1])
 
-            my_cmap = plt.matplotlib.cm.get_cmap(cmap)
-            my_cmap.set_bad(my_cmap(0))
-            p.set_cmap(field=field, cmap=my_cmap)
-            p.set_background_color(field=field)
-            if cbarbounds is not None:
-                if cbarunits is None:
-                    print('Specify a units for the boundaries of the colorbar')
-                p.set_unit(field=field, new_unit=cbarunits)
-                p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
-            if LogScale:
-                p.set_log(field, log=True)
-            else:
-                p.set_log(field, log=False)
+            p = _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, width,
+                            path, extension, ds, text_color)
 
-            p.hide_colorbar()
-            p.hide_axes()
-
-            p.annotate_scale(draw_inset_box=True, corner='lower_right', text_args={'size':28})
-            #if files.index(fn)==1:
-            #    print(files.index(fn))
-            #    p.annotate_timestamp(draw_inset_box=True, time=True, redshift=False,
-            #        corner='lower_left', text_args={'color':'white', 'size':28},#)
-            #        time_offset=(1, 'Myr'))
-            #else:
-            p.annotate_timestamp(draw_inset_box=True, time=True, redshift=True,
-                    corner='lower_left', text_args={'color':'white', 'size':28})
-            p.set_width(width)
-
-            print('Saving ',path+'/'+str(ds)+'.'+extension)
-            #this line is here to effectively apply z_lim, units etc....
-            p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
-
-            plot = p.plots[field]
-            cbmap = plot.cb.mappable
-            current_cmap = cbmap.get_cmap()
-            current_cmap.set_bad(current_cmap(0))
-            cb_axes = inset_axes(plot.axes, width='80%', height='3%', loc=9)
-            cb_axes.tick_params(axis='x', which='major', length=4,
-                              labelcolor=text_color, direction='in', top=True)
-            cbar = plot.figure.colorbar(cbmap, cax=cb_axes, 
-                              orientation='horizontal')
-            label = plot.cax.get_ylabel()
-            if (('Stars' in label) or ('Dm' in label) or ('Star' in label)):
-                label = label.replace('Stars\ CIC', 'Stellar')
-                label = label.replace('Stars', 'Stellar')
-                label = label.replace('Star\ CIC', 'Stellar')
-                label = label.replace('Star', 'Stellar')
-                label = label.replace('Dm\ CIC', 'DM')
-                label = label.replace('Dm', 'DM')
-            cbar.set_label(label, color=text_color)
-            cbar.ax.xaxis.label.set_font_properties(p._font_properties)
-            p._font_properties.set_size(25)
-            cbar.ax.tick_params(labelsize=25)
             if contour_field is not None:
                 p.annotate_contour(contour_field,ncont=[-24,-23],
                     plot_args = {'color':{'yellow','blue','black'}})
-            p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
+            
+            p.save(path+'/'+str(ds)+'3.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
 
     return
-
 
 def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         rbound=[(0.01,'kpc'),(10, 'kpc')], ybound=None, units=None,
@@ -295,7 +144,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
     files.sort()
 
     path=folder + '/profiles'
-    _mkdir(path)
+    utils._mkdir(path)
 
     ToPlot = [True] * len(files)
 
@@ -318,11 +167,11 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         else:
             path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(
                 hnum, timestep))
-        _mkdir(path)
+        utils._mkdir(path)
 
     if bhid is not None:
         path = os.path.join(path, 'BH%s' % bhid)
-        _mkdir(path)
+        utils._mkdir(path)
         s = sink.Sinks(ID=[bhid])
         tform = s.sink[bhid].t.min()
         tmerge = s.sink[bhid].t.max()
@@ -388,3 +237,193 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
         yt.funcs.mylog.setLevel(20)
     return
 
+def _make_path(folder, hnum, Galaxy, bhid, slice, width, field, axis, LogScale, plotsinks, timestep):
+    path = os.path.join(folder, 'snapshots')
+    utils._mkdir(path)
+
+    if hnum is not None:
+        if Galaxy:
+            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(
+                hnum, timestep))
+        else:
+            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(
+                hnum, timestep))
+        utils._mkdir(path)
+
+    if bhid is not None:
+        path = os.path.join(path, 'BH%s' % bhid)
+        utils._mkdir(path)
+
+    if slice:
+        path = os.path.join(path, 'Slice')
+        utils._mkdir(path)
+    else:
+        path = os.path.join(path, 'Proj')
+        utils._mkdir(path)
+
+    if width is not None:
+        if width == 'Rvir':
+            path = os.path.join(path, 'rvir')
+        else:
+            path = os.path.join(path, '%s%s' % (width[0], width[1]))
+        utils._mkdir(path)
+
+    path = os.path.join(path, '%s%s' % (field[0], field[1]))
+    utils._mkdir(path)
+    path = os.path.join(path, 'Axis_%s' % axis)
+    utils._mkdir(path)
+    if LogScale:
+        path = os.path.join(path, 'LogScale')
+    else:
+        path = os.path.join(path, 'LinScale')
+    utils._mkdir(path)
+
+    if plotsinks == [0]:
+        path = os.path.join(path, 'NoBH')
+    elif plotsinks == [-1]:
+        path = os.path.join(path, 'AllBH')
+    else:
+        path = os.path.join(path, 'SomeBH')
+    utils._mkdir(path)
+    return path
+
+
+def _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics):
+    if plotsinks == [-1]:
+        BHsToShow = ds.sink.ID
+    else:
+        BHsToShow = np.intersect1d(plotsinks , ds.sink.ID)
+
+    for bhnum in BHsToShow:
+       ch = ds.sink.loc[ds.sink.ID == bhnum]
+       if (((float(sp.center[0].to('code_length')) - ch.x.item())**2 +
+           (float(sp.center[1].to('code_length')) - ch.y.item())**2 +
+           (float(sp.center[2].to('code_length')) - ch.z.item())**2) <
+           ((sp.radius.in_units('code_length') / 2)**2)):
+
+           p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
+                             marker='.', plot_args={
+                                 'color': text_color, 's': 100})
+
+           p.annotate_text(
+               [ch.x.item(), ch.y.item(), ch.z.item()],
+               text=str(ch.ID.item()),
+               text_args={'color': text_color},
+               inset_box_args={'alpha': 0.0}
+           )
+
+           if sinkdynamics > 0:
+               ch=s.sink[bhnum]
+               ch = ch.loc[
+                (ch.t>float((ds.current_time-
+                   ds.arr(sinkdynamics, 'Myr')).in_units('Gyr'))) &
+                (ch.t<float((ds.current_time+
+                   ds.arr(sinkdynamics, 'Myr')).in_units('Gyr')))]
+               x=list(ch.x)
+               y=list(ch.y)
+               z=list(ch.z)
+               for i in range(len(x)-1):
+                   p.annotate_line([x[i],y[i],z[i]],
+                       [x[i+1],y[i+1],z[i+1]],
+                       coord_system='data', plot_args={'color':text_color})
+
+    return p
+
+
+def _add_halos(ds, plothalos, masshalomin, p, text_color):
+    if plothalos == 'halos':
+        hds = ds.halo.halos
+    if plothalos == 'galaxies':
+        hds = ds.gal.gal 
+    for hid in hds.index:
+        ch = hds.loc[hid]
+        w = ds.arr(width[0], width[1])
+        if ((ch.m > masshalomin) &
+            (((float(sp.center[0].to('code_length')) - ch.x.item())**2 +
+              (float(sp.center[1].to('code_length')) - ch.y.item())**2 +
+              (float(sp.center[2].to('code_length')) - ch.z.item())**2) <
+             ((w.in_units('code_length') / 2)**2))):
+
+            p.annotate_sphere([ch.x.item(), ch.y.item(), ch.z.item()],
+                              (ch.rvir.item(), 'Mpc'),
+                              circle_args={'color': text_color})
+
+            p.annotate_text([ch.x.item(), ch.y.item(),
+                             ch.z.item()], text='%s' % hid,
+                             text_args={'color' : text_color})
+    
+    return p
+
+
+def _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, width,
+                path, extension, ds, text_color):
+
+   p.save(path+'/'+str(ds)+'1.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
+   my_cmap = plt.matplotlib.cm.get_cmap(cmap)
+   my_cmap.set_bad(my_cmap(0))
+   p.set_cmap(field=field, cmap=my_cmap)
+   p.set_background_color(field=field)
+   if cbarbounds is not None:
+       if cbarunits is None:
+           print('Specify a units for the boundaries of the colorbar')
+       p.set_unit(field=field, new_unit=cbarunits)
+       p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
+   if LogScale:
+       p.set_log(field, log=True)
+   else:
+       p.set_log(field, log=False)
+
+   p.hide_colorbar()
+   p.hide_axes()
+
+   p.annotate_scale(draw_inset_box=True, corner='lower_right', text_args={'size':28})
+   p.annotate_timestamp(draw_inset_box=True, time=True, redshift=True,
+           corner='lower_left', text_args={'color':'white', 'size':28})
+   p.set_width(width)
+
+   print('Saving ',path+'/'+str(ds)+'.'+extension)
+   #this line is here to effectively apply z_lim, units etc....
+   p.save(path+'/'+str(ds)+'2.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
+
+   plot = p.plots[field]
+   cbmap = plot.cb.mappable
+   current_cmap = cbmap.get_cmap()
+   current_cmap.set_bad(current_cmap(0))
+   cb_axes = inset_axes(plot.axes, width='80%', height='3%', loc=9)
+   cb_axes.tick_params(axis='x', which='major', length=4,
+                     labelcolor=text_color, direction='in', top=True)
+   cbar = plot.figure.colorbar(cbmap, cax=cb_axes, 
+                     orientation='horizontal')
+   label = plot.cax.get_ylabel()
+   if (('Stars' in label) or ('Dm' in label) or ('Star' in label)):
+       label = label.replace('Stars\ CIC', 'Stellar')
+       label = label.replace('Stars', 'Stellar')
+       label = label.replace('Star\ CIC', 'Stellar')
+       label = label.replace('Star', 'Stellar')
+       label = label.replace('Dm\ CIC', 'DM')
+       label = label.replace('Dm', 'DM')
+   cbar.set_label(label, color=text_color)
+   cbar.ax.xaxis.label.set_font_properties(p._font_properties)
+   p._font_properties.set_size(25)
+   cbar.ax.tick_params(labelsize=25)
+
+   return p
+
+def _get_axis(axis, ds, haloid):
+    if axis == 'x':
+        return [1,0,0]
+    elif axis == 'y':
+        return [0,1,0]
+    elif axis == 'z':
+        return [0,0,1]
+    elif ((axis == 'L') & (haloid in ds.gal.gal.index)):
+        #L = ds.gal.gal.loc[haloid, ['Lx','Ly','Lz']].tolist()
+        L = [1,0,0]
+        return L / np.linalg.norm(L) 
+    elif ((axis == 'Lperp') & (haloid in ds.gal.gal.index)):
+        L = ds.gal.gal.loc[haloid, ['Lx','Ly','Lz']].tolist()
+        L = np.cross(L, [1,0,0])
+        return L / np.linalg.norm(L) 
+    else:
+        ValueError('Please return a correct axis')
+        

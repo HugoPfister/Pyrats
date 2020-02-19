@@ -108,7 +108,7 @@ def find_outputs(path='.'):
 def filter_outputs(snap=[-1], hnum=None, timestep=None, Galaxy=False, bhid=None):
     
     yt.funcs.mylog.setLevel(0)
-    files = find_outputs()
+    files = find_outputs('./Outputs/')
     ToPlot = [True] * len(files)
     hid = [hnum for f in files]
 

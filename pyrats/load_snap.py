@@ -12,13 +12,18 @@ from . import fields, sink, galaxies, utils
 def load(files='',
          haloID=None, Galaxy=False, bhID=None, 
          radius=None, bbox=None,
-         MatchObjects=False, fvir=[1, 90], contam=False,
+         MatchObjects=False, fvir=[1,0.1,'r90'], contam=False,
          old_ramses=False, prefix='./', verbose=True):
     """
     Loads a ramses output
 
+    Note
+    ----
+    by default the outputs must be in a folder Outputs
+
     Parameters
     ----------
+    prefix (str) : path to the outputs
     files : int or path
        Path or output number to load.
     haloID : int, optional
@@ -33,32 +38,23 @@ def load(files='',
        Bounding box of the region to load in code_unit, in the form of
        [[left, bottom], [right, top]].
     MathObjects : logical, optional
-       If True, match galaxies and BH to halos.
+       If True, match BH to galaxies
     fvir : 3-tuple, optional
        Fraction of the virial radius to look at when matching objects.
          fvir[0] -> galaxies to halos
          fvir[1] -> sinks to halos
          fvir[2] -> sinks to galaxies
-    old_ramses : logical, optional
-       DEPRECATED. If true, add a filter to the dataset using the ids
-       and age of particles. See note
+    old_ramses : load old ramses 
     prefix : str, optional
        Set this to the relative path to the root folder containing all
        the outputs.
-
-    Note
-    ----
-
-    The star and dm filters are now obsolete, as the default behavior
-    of yt and RAMSES is to filter based on the particle family. If
-    your version of RAMSES is too old, you can still use stars and dm
+    contam (logical) : required by the halo finder
 
     """
 
     if isinstance(files, numbers.Number):
         if files == -1:
-            files = os.path.join(prefix,'Outputs')\
-              .format(files=files)
+            files = os.path.join(prefix,'Outputs')
             files = utils.find_outputs(path=files)[-1]
         else:
             files = os.path.join(prefix,'Outputs', 'output_{files:05d}', 'info_{files:05d}.txt')\

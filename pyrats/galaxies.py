@@ -27,8 +27,8 @@ class GalList(object):
                 self.gal = self._read_halos(contam,filename)
                 if self.gal.index.size > 0:    
                     print('writing ./Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout))
-                #    self.gal.to_hdf(
-                #        './Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout), 'hdf5')
+                    self.gal.to_hdf(
+                        './Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout), 'hdf5')
             else:
                 mylog.info('Did not find {}'.format(filename))
                 mylog.info('Did not find any tree_brick file.')
@@ -58,9 +58,9 @@ class GalList(object):
                      'r50DM', 'r90DM', 'r50star', 'r90star',
                      'Vsigma', 'sigma1D',
                      'Vsigma_disc', 'sigma1D_disc',
-                     'sigma_bulge', 'mbulge',
-                     'rr', 'rho', 'rr3D', 'rho3D',
-                     'rr3DDM', 'rho3DDM', 'rr3Dstar', 'rho3Dstar',
+                     'sigma_bulge', 'mbulge'#,
+                     #'rr', 'rho', 'rr3D', 'rho3D'#,
+                     #'rr3DDM', 'rho3DDM', 'rr3Dstar', 'rho3Dstar',
                      ]
 
         if contam:
@@ -81,8 +81,6 @@ class GalList(object):
                 [age] = fpu.read_vector(f, prec)
                 [nhalos, nsubs] = fpu.read_vector(f, 'i')
 
-                # Save the age/aexp, the mass of the particle,
-                # as well as the number of (sub)halos
                 data = np.empty(shape=(nhalos + nsubs, len(halo_keys)), dtype=object)
 
                 mylog.info('Brick: groups       : %s' % nhalos)
@@ -113,8 +111,10 @@ class GalList(object):
                     [cNFW] = fpu.read_vector(f, prec)  # NFW concentration from Prada+2012
                     [r200, m200] = fpu.read_vector(f, prec)  # R200 and M200
                     [r50, r90] = fpu.read_vector(f, prec)  # R50 and R90
-                    rr3D = fpu.read_vector(f, prec)  # Radial bins
-                    rho3D = fpu.read_vector(f, prec)  # 3D density profile
+                    #rr3D = fpu.read_vector(f, prec)  # Radial bins
+                    #rho3D = fpu.read_vector(f, prec)  # 3D density profile
+                    fpu.read_vector(f, prec)  # broken 
+                    fpu.read_vector(f, prec)  # broken 
                     [rho0, r_c] = fpu.read_vector(f, prec)  # ?
                     # Stellar-only properties
                     [reff] = fpu.read_vector(f, prec)  # Effective radius
@@ -126,8 +126,10 @@ class GalList(object):
                     [sigma_bulge, mbulge] = fpu.read_vector(f, prec)  # Bulge properties
                     # Stellar surface density profile
                     fpu.skip(f, 1) # number of bins
-                    rr = fpu.read_vector(f, prec)  # Radial bins
-                    rho = fpu.read_vector(f, prec)  # Surface density profile
+                    #rr = fpu.read_vector(f, prec)  # Radial bins
+                    #rho = fpu.read_vector(f, prec)  # Surface density profile
+                    fpu.read_vector(f, prec)  # broken 
+                    fpu.read_vector(f, prec)  # broken 
                     # fpu.skip(f, 1)
                     # fpu.skip(f, 1)
 
@@ -146,10 +148,14 @@ class GalList(object):
                     [rstar, astar, bstar, cstar] = fpu.read_vector(f, prec)  # Shape (stars)
                     [r50dm, r90dm] = fpu.read_vector(f, prec)  # R50 and R90 (DM)
                     [r50star, r90star] = fpu.read_vector(f, prec)  # R50 and R90 (stars)
-                    rr3Ddm = fpu.read_vector(f, prec)  # Radial bins
-                    rho3Ddm = fpu.read_vector(f, prec)  # 3D density profile
-                    rr3Dstar = fpu.read_vector(f, prec)  # Radial bins
-                    rho3Dstar = fpu.read_vector(f, prec)  # 3D density profile
+                    #rr3Ddm = fpu.read_vector(f, prec)  # Radial bins
+                    #rho3Ddm = fpu.read_vector(f, prec)  # 3D density profile
+                    #rr3Dstar = fpu.read_vector(f, prec)  # Radial bins
+                    #rho3Dstar = fpu.read_vector(f, prec)  # 3D density profile
+                    fpu.read_vector(f, prec)  # broken 
+                    fpu.read_vector(f, prec)  # broken 
+                    fpu.read_vector(f, prec)  # broken 
+                    fpu.read_vector(f, prec)  # broken 
                     [sigmadm, sigmastar] = fpu.read_vector(f, prec)  # Velocity dispersions
 
                     if contam:
@@ -176,10 +182,10 @@ class GalList(object):
                                 r50dm, r90dm, r50star, r90star,
                                 Vsigma, sigma1D,
                                 Vsigma_disc, sigma1D_disc,
-                                sigma_bulge, mbulge,
-                                rr, rho,
-                                rr3D, rho3D,
-                                rr3Ddm, rho3Ddm, rr3Dstar, rho3Dstar]
+                                sigma_bulge, mbulge]#,
+                                #rr, rho,
+                                #rr3D, rho3D]#,
+                                #rr3Ddm, rho3Ddm, rr3Dstar, rho3Dstar]
                     if contam:
                         halodata.append(contamlevel)
                         halodata.append(mcontam)
@@ -219,11 +225,11 @@ class GalList(object):
                   'sigma', 'sigma_bulge', 'mbulge',
                   'mcontam', 'mtotcontam'):
             types[k] = np.float64
-            for k in ('rr', 'rho',
-                      'rr3D', 'rr3DDM', 'rr3Dstar',
-                      'rho3D', 'rho3DDM', 'rho3Dstar'
-                      ):
-                types[k] = 'object'
+            #for k in ('rr', 'rho',
+            #          'rr3D',# 'rr3DDM', 'rr3Dstar',
+            #          'rho3D'#, 'rho3DDM', 'rho3Dstar'
+            #          ):
+            #    types[k] = 'object'
         dd = {k: data[:, i].astype(types[k])
               for i, k in enumerate(halo_keys)}
 
