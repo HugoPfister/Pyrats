@@ -329,8 +329,8 @@ def _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics):
 
     return p
 
-
 def _add_halos(ds, plothalos, masshalomin, p, text_color):
+##this function is probably broken as is. 
     if plothalos == 'halos':
         hds = ds.halo.halos
     if plothalos == 'galaxies':
