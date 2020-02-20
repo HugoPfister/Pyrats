@@ -187,6 +187,9 @@ def _mkdir(path):
 
 
 def smooth(y, box_pts):
+    y = np.array(y)
+    y[np.invert(np.isfinite(y))] = y[(np.isfinite(y))].mean()
+    y = np.concatenate(([y[0]]*box_pts, y, [y[-1]]*box_pts))
     box = np.ones(box_pts)/box_pts
     y_smooth = np.convolve(y, box, mode='same')
-    return y_smooth
+    return y_smooth[box_pts:-box_pts]

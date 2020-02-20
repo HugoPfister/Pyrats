@@ -22,16 +22,8 @@ class GalList(object):
         if os.path.exists(filename):
             self.gal = pd.read_hdf(filename)
         else:
-            filename = './Structures/AdaptaHOP/tree_bricks{:03}'.format(self.iout)
-            if os.path.exists(filename):
-                self.gal = self._read_halos(contam,filename)
-                if self.gal.index.size > 0:    
-                    print('writing ./Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout))
-                    self.gal.to_hdf(
-                        './Structures/hdf5/tree_bricks{:03}.hdf'.format(self.iout), 'hdf5')
-            else:
-                mylog.info('Did not find {}'.format(filename))
-                mylog.info('Did not find any tree_brick file.')
+            mylog.info('Did not find {}'.format(filename))
+            mylog.info('Use Struc_To_hdf5 to')
 
 
     # Convenience functions
@@ -58,8 +50,8 @@ class GalList(object):
                      'r50DM', 'r90DM', 'r50star', 'r90star',
                      'Vsigma', 'sigma1D',
                      'Vsigma_disc', 'sigma1D_disc',
-                     'sigma_bulge', 'mbulge'#,
-                     #'rr', 'rho', 'rr3D', 'rho3D'#,
+                     'sigma_bulge', 'mbulge',#,
+                     'rr', 'rho'#, 'rr3D', 'rho3D'#,
                      #'rr3DDM', 'rho3DDM', 'rr3Dstar', 'rho3Dstar',
                      ]
 
@@ -126,10 +118,8 @@ class GalList(object):
                     [sigma_bulge, mbulge] = fpu.read_vector(f, prec)  # Bulge properties
                     # Stellar surface density profile
                     fpu.skip(f, 1) # number of bins
-                    #rr = fpu.read_vector(f, prec)  # Radial bins
-                    #rho = fpu.read_vector(f, prec)  # Surface density profile
-                    fpu.read_vector(f, prec)  # broken 
-                    fpu.read_vector(f, prec)  # broken 
+                    rr = fpu.read_vector(f, prec)  # Radial bins
+                    rho = fpu.read_vector(f, prec)  # Surface density profile
                     # fpu.skip(f, 1)
                     # fpu.skip(f, 1)
 
@@ -182,8 +172,8 @@ class GalList(object):
                                 r50dm, r90dm, r50star, r90star,
                                 Vsigma, sigma1D,
                                 Vsigma_disc, sigma1D_disc,
-                                sigma_bulge, mbulge]#,
-                                #rr, rho,
+                                sigma_bulge, mbulge,#]
+                                rr, rho]
                                 #rr3D, rho3D]#,
                                 #rr3Ddm, rho3Ddm, rr3Dstar, rho3Dstar]
                     if contam:
@@ -225,11 +215,11 @@ class GalList(object):
                   'sigma', 'sigma_bulge', 'mbulge',
                   'mcontam', 'mtotcontam'):
             types[k] = np.float64
-            #for k in ('rr', 'rho',
+            for k in ('rr', 'rho'):
             #          'rr3D',# 'rr3DDM', 'rr3Dstar',
             #          'rho3D'#, 'rho3DDM', 'rho3Dstar'
             #          ):
-            #    types[k] = 'object'
+                types[k] = 'object'
         dd = {k: data[:, i].astype(types[k])
               for i, k in enumerate(halo_keys)}
 
