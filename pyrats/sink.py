@@ -311,9 +311,11 @@ def get_sinks(ds):
         sink.x = sink.x / ds['boxlen'] 
         sink.y = sink.y / ds['boxlen'] 
         sink.z = sink.z / ds['boxlen'] 
-        
-        sink['hid'] = -1 ; sink['galID'] = -1
-        sink['mgal'] = 0 ; sink['mbulge'] = 0
-        sink['sigma_bulge'] = 0 ; sink['mhalo'] = 0
+    else:
+        mylog.info('No sink found, keep going anyway')
+
+    sink['hid'] = -1 ; sink['galID'] = -1
+    sink['mgal'] = 0 ; sink['mbulge'] = 0
+    sink['sigma_bulge'] = 0 ; sink['mhalo'] = 0
 
     return sink

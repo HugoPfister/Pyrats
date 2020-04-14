@@ -53,6 +53,8 @@ def load(files='',
     """
 
     if isinstance(files, numbers.Number):
+        if not os.path.exists(prefix+'/Outputs'):
+            mylog.info('Put all your outputs in a folder Outputs')
         if files == -1:
             files = os.path.join(prefix,'Outputs')
             files = utils.find_outputs(path=files)[-1]
@@ -83,7 +85,7 @@ def load(files='',
 
     ds.sink = sinks
     ds.gal = gal
-    if MatchObjects: matching(ds, fvir)
+    #if MatchObjects: matching(ds, fvir)
 
     # Load only the relevant part of the simulation
     if haloID is not None:

@@ -78,14 +78,11 @@ def plot_snapshots(axis='z', center=None,
                 #p = yt.OffAxisSlicePlot(ds, data_source=sp, normal=normal, fields=field, width=width)
                 p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, width=width)
             else:
-                print(sp[field], ds, sp, normal, field, weight_field, width, method)
                 #p = yt.OffAxisProjectionPlot(ds, data_source=sp, normal=normal, fields=field, weight_field=weight_field,
                 #                      width=width, method=method)
                 p = yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
                                                       center=sp.center, width=width, method=method)
 
-            print(p)
-            p.save(path+'/'+str(ds)+'0.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
 
             if (plotsinks != [0]):
                 p = _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics)
@@ -103,8 +100,7 @@ def plot_snapshots(axis='z', center=None,
                 p.annotate_contour(contour_field,ncont=[-24,-23],
                     plot_args = {'color':{'yellow','blue','black'}})
             
-            p.save(path+'/'+str(ds)+'3.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
-
+            p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
     return
 
 def plot_profiles(folder='./', center=[0.5,0.5,0.5],
@@ -358,7 +354,6 @@ def _add_halos(ds, plothalos, masshalomin, p, text_color):
 def _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, width,
                 path, extension, ds, text_color):
 
-   p.save(path+'/'+str(ds)+'1.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
    my_cmap = plt.matplotlib.cm.get_cmap(cmap)
    my_cmap.set_bad(my_cmap(0))
    p.set_cmap(field=field, cmap=my_cmap)
@@ -383,7 +378,7 @@ def _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, width,
 
    print('Saving ',path+'/'+str(ds)+'.'+extension)
    #this line is here to effectively apply z_lim, units etc....
-   p.save(path+'/'+str(ds)+'2.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
+   p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
 
    plot = p.plots[field]
    cbmap = plot.cb.mappable
