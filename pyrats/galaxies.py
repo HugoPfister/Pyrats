@@ -25,6 +25,43 @@ class GalList(object):
             mylog.info('Did not find {}'.format(filename))
             mylog.info('Use Struc_To_hdf5 to convert to hdf5 file')
             mylog.info('Keep going anyway')
-            self.gal = pd.DataFrame(columns=['level', 'nstar'])
+            self.gal = pd.DataFrame(columns=['level', 'nstar','mstar'])
 
-        self.gal['bhid'] = -1; self.gal['msink'] = -1
+        self.gal['bhid'] = -1; self.gal['msink'] = -1; self.gal['BH_dist'] = -1
+
+
+    def read_part(self, igal):
+        '''
+        Read the particle files, output in this order:
+            r,v,m,ID,age,z
+        '''
+        filename = self.prefix+'/Structures/AdaptaHOP/GAL_{:05}/gal_stars_{:07}'.format(
+            self.iout, igal)
+        if not os.path.exists(filename):
+            mylog.info('Could not find {}'.format(filename))
+            mylog.info('End of reading.')
+            return
+        with open(filename, 'rb') as f:
+            igal_file = fpu.read_vector(f, 'i')
+            if igal_file != igal:
+                mylog.info('Error, file galaxy is {}'.format(igal_file))
+            fpu.read_vector(f, 'i') #level
+            fpu.read_vector(f, 'd') #mgal
+            rgal = fpu.read_vector(f, 'd') #xgal
+            vgal = fpu.read_vector(f, 'd') #vgal
+            fpu.read_vector(f, 'd') #Lgal
+            fpu.read_vector(f, 'q') #nstar
+            r = np.array([fpu.read_vector(f, 'd') for _ in range(3)])
+            v = np.array([fpu.read_vector(f, 'd') for _ in range(3)])
+            m = fpu.read_vector(f, 'd') 
+            ID = fpu.read_vector(f, 'i') 
+            age = fpu.read_vector(f, 'd') 
+            z = fpu.read_vector(f, 'd') 
+            
+            r = r.T - rgal
+            v = v.T - vgal
+
+        return r,v,m,ID,age,z
+
+
+

@@ -9,7 +9,7 @@ import yt.units as constants
 def load(files='',
          haloID=None, Galaxy=False, bhID=None,
          radius=None, bbox=None,
-         MatchObjects=False, fvir=[1,0.1,'r90'], contam=False,
+         MatchObjects=False, fvir=[1,'r90'], contam=False,
          old_ramses=False, verbose=True, prefix='.'):
     """
     Load a RAMSES output

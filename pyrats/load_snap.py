@@ -12,7 +12,7 @@ from . import fields, sink, galaxies, utils
 def load(files='',
          haloID=None, Galaxy=False, bhID=None, 
          radius=None, bbox=None,
-         MatchObjects=False, fvir=[1,0.1,'r90'], contam=False,
+         MatchObjects=False, fvir=[1,'r90'], contam=False,
          old_ramses=False, prefix='./', verbose=True):
     """
     Loads a ramses output
@@ -85,7 +85,7 @@ def load(files='',
 
     ds.sink = sinks
     ds.gal = gal
-    #if MatchObjects: matching(ds, fvir)
+    if MatchObjects: matching(ds, fvir)
 
     # Load only the relevant part of the simulation
     if haloID is not None:
@@ -167,76 +167,18 @@ def get_sphere(ds, width, bhid=None, hnum=None, Galaxy=None):
     return sp
 
 def matching(ds, fvir):
-        path = ds.prefix+'/matching/{}_{}/{}'.format(fvir[0], fvir[1], fvir[2], ds.ids)
+        path = os.path.join(ds.prefix,'matching/{}_{}star'.format(fvir[0], fvir[1]))
         if os.path.exists(path):
-            dummy = pd.read_hdf(path+'/gal')
-            for c in dummy.columns:
-                ds.gal.gal[c] = dummy[c]
-            dummy = pd.read_hdf(path+'/sinks')
-            for c in dummy.columns:
-                ds.sink[c] = dummy[c]
-
-        else: 
-            utils._mkdir('./matching/')
-            utils._mkdir('./matching/{}_{}_{}'.format(fvir[0],fvir[1],fvir[2]))
-            utils._mkdir(path)
-            
-            L = ds.length_unit.in_units('Mpc')
-            mylog.info('Matching galaxies and sinks to haloes')
-            #match galaxies and sinks to haloes
-            for hid in tqdm(ds.halo.halos.sort_values('level').index):
-                h=ds.halo.halos.loc[hid]
-                d = np.sqrt((h.x.item() - ds.gal.gal.x)**2 + (h.y.item() - ds.gal.gal.y)** 2 +
-                    (h.z.item() - ds.gal.gal.z)**2)
-                galID = ds.gal.gal.loc[((d * L) < h.rvir.item()*fvir[0])].index
-                haloid = ds.gal.gal.loc[galID].hid.unique()
-                haloid = haloid[np.where(haloid != -1)]
-                haloid = ds.halo.halos.loc[haloid].galID
-                galID = np.setxor1d(galID, haloid)
-                if len(galID) != 0:
-                    ds.gal.gal.loc[galID, 'mhalo'] = h.m.item()
-                    ds.gal.gal.loc[galID, 'hid'] = hid
-                    galID = ds.gal.gal.loc[galID].m.idxmax()
-                    ds.halo.halos.loc[hid, 'galID'] = galID
-                    ds.halo.halos.loc[hid, 'mgal'] = ds.gal.gal.loc[galID].m.item()
-
-                d = np.sqrt((h.x.item() - ds.sink.x)**2 + (h.y.item() - ds.sink.y)** 2 +
-                    (h.z.item() - ds.sink.z)**2)
-                bhid = ds.sink.loc[((d * L) < h.rvir.item()*fvir[1])].index
-                haloid = ds.sink.loc[bhid].hid.unique()
-                haloid = haloid[np.where(haloid != -1)]
-                haloid = ds.halo.halos.loc[haloid].bhid
-                bhid = np.setxor1d(bhid, haloid)
-                if len(bhid) != 0:
-                    ds.sink.loc[bhid, 'mhalo'] = h.m.item()
-                    ds.sink.loc[bhid, 'hid'] = hid
-                    bhid = ds.sink.loc[bhid].M.idxmax()
-                    bhid = ds.sink.loc[bhid].ID
-                    ds.halo.halos.loc[hid, 'bhid'] = bhid
-                    ds.halo.halos.loc[hid, 'msink'] = ds.sink.loc[ds.sink.ID == bhid].M.item()
-
-            mylog.info('Matching sinks to galaxies')
-            # match sinks to galaxies
-            for galID in tqdm(ds.gal.gal.sort_values('level').index):
-                g = ds.gal.gal.loc[galID]
-                d = np.sqrt((g.x.item() - ds.sink.x)**2 + (g.y.item() - ds.sink.y)** 2 +
-                    (g.z.item() - ds.sink.z)**2)
-                #bhid = ds.sink.loc[((d * L) < g.r.item()*fvir[2]) & (ds.sink.mgal < g.m.item())].index
-                bhid = ds.sink.loc[((d * L) < g.Reff90.item()*fvir[2]) & (ds.sink.mgal < g.m.item())].index
-                #bhid = sinks.loc[((d * L) < g.r.item()*fvir[2])].index
-                if len(bhid) > 0:
-                    ds.sink.loc[bhid, 'mgal'] = g.m.item()
-                    ds.sink.loc[bhid, 'galID'] = galID
-                    ds.sink.loc[bhid, 'mbulge'] = g.mbulge.item()
-                    ds.sink.loc[bhid, 'sigma_bulge'] = g.sigma_bulge.item()
-                    bhid = ds.sink.loc[bhid].M.idxmax()
-                    bhid = ds.sink.loc[bhid].ID
-                    ds.gal.gal.loc[galID, 'bhid'] = bhid
-                    ds.gal.gal.loc[galID, 'msink'] = ds.sink.loc[ds.sink.ID == bhid].M.item()
-                
-            ds.gal.gal[['bhid','hid','msink','mhalo']].to_hdf(
-                    path+'/gal', key='hdf5')    
-            ds.sink[['hid','mhalo','galID','mgal','mbulge','sigma_bulge']].to_hdf(
-                    path+'/sinks', key='hdf5')   
-
-            return
+            mylog.info('Using {}_{}star for matching'.format(fvir[0],fvir[1]))
+        else:
+            mylog.info('{}star not found'.format(path))
+        for component in ['gal', 'sinks']:
+            path_dummy = os.path.join(path, component, str(ds.ids))
+            if os.path.exists(path_dummy):
+                dummy = pd.read_hdf(path_dummy)
+                for c in dummy.columns:
+                    if component == 'gal':
+                        ds.gal.gal[c] = dummy[c]
+                    if component == 'sinks':
+                        ds.sink[c] = dummy[c]
+        return ds
