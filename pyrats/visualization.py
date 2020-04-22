@@ -4,15 +4,16 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from itertools import import product
 
 from . import sink, analysis, load_snap, utils
 
-def plot_snapshots(axis='z', center=None,
-                   field=('gas', 'density'),
-                   weight_field=('index','ones'), slice=False,
+def plot_snapshots(axis=['x','y','z'], center=None,
+                   field=[('gas', 'density')],
+                   weight_field=[('index','ones')], slice=False,
                    contour_field = None,
-                   width=(10, 'kpc'), folder='./',
-                   cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
+                   width=[(10, 'kpc')], folder='./',
+                   cbarunits=[None], cbarbounds=[None], cmap=['viridis'], LogScale=[True],
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e5,
                    plotsinks=[0], plotparticles=[False,'type'], sinkdynamics=0, text_color='black',
@@ -20,7 +21,7 @@ def plot_snapshots(axis='z', center=None,
     """
     Visualization function, by default it is applied to ALL snapshots
 
-    axis : the projection axis
+    axis : the projection axis #TODO off axis
     center : center (in code_length units) of the region to show, useless if hnum/bhid
 
     width : width of the window, default (10, 'kpc'), can be 'Rvir'
@@ -59,7 +60,6 @@ def plot_snapshots(axis='z', center=None,
     files = utils.find_outputs('./Outputs')
     if ((hnum != None) & (timestep == None)):
         timestep = snap[-1]
-    path = _make_path(folder, hnum, Galaxy, bhid, slice, width, field, axis, LogScale, plotsinks, timestep)
     ToPlot, haloid = utils.filter_outputs(snap=snap, hnum=hnum, timestep=timestep, Galaxy=Galaxy, bhid=bhid)
     if sinkdynamics > 0:
         s = sink.Sinks()
@@ -67,8 +67,21 @@ def plot_snapshots(axis='z', center=None,
     for fn in yt.parallel_objects(files):
         i = files.index(fn)
         if ToPlot[i]:
-            print(fn, haloid[i])
+            mylog.info(fn, haloid[i])
+            #looking at the larger width to load the largest one
+            #instead of loading the snapshot many times
+            ds = load_snap.load(fn, verbose=False)
+            max_width = ds.arr(0,'pc')
+            for w in width: max_width=max(max_width, ds.arr(w[0],w[1])) 
             ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, old_ramses=old_ramses, verbose=False)
+            
+            for _w in width:
+             for _field_infos in zip(field, weight_field, cbarunits, cmap, cbarbounds, LogScale):
+              for _axis in axis: 
+                _field, _weight_field, _cbarunits, _cmap, _cbarbounds, _LogScale = _field_infos
+                path = _make_path(folder, hnum, Galaxy, bhid, slice, _w,
+                    _field, _axis, _LogScale, plotsinks, timestep)
+           
             if center != None:
                 sp = ds.sphere(center, width)
             else:
@@ -82,7 +95,6 @@ def plot_snapshots(axis='z', center=None,
                 #                      width=width, method=method)
                 p = yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
                                                       center=sp.center, width=width, method=method)
-
 
             if (plotsinks != [0]):
                 p = _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics)
@@ -149,7 +161,7 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
             ToPlot[i] = ((i+1) in snap)
 
     if ((hnum is not None) and (bhid is not None)):
-        print('Please specify only hnum or bhid but not both')
+        raise AttributeError('Please specify only hnum or bhid but not both')
         return
 
     if hnum is not None:
@@ -234,53 +246,59 @@ def plot_profiles(folder='./', center=[0.5,0.5,0.5],
     return
 
 def _make_path(folder, hnum, Galaxy, bhid, slice, width, field, axis, LogScale, plotsinks, timestep):
-    path = os.path.join(folder, 'snapshots')
-    utils._mkdir(path)
+    #path = os.path.join(folder, 'snapshots')
+    #utils._mkdir(path)
+    path = folder
 
-    if hnum is not None:
-        if Galaxy:
-            path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(
-                hnum, timestep))
-        else:
-            path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(
-                hnum, timestep))
-        utils._mkdir(path)
+
+    #TODO : MAYBE DEAL WITH THIS WHEN WE LOOK AT THE HISTORY OF A GAL/HALO
+    #if hnum is not None:
+    #    if Galaxy:
+    #        path = os.path.join(path, 'Galaxy{:04}_output_{:05}'.format(
+    #            hnum, timestep))
+    #    else:
+    #        path = os.path.join(path, 'Halo{:04}_output_{:05}'.format(
+    #            hnum, timestep))
+    #    utils._mkdir(path)
 
     if bhid is not None:
         path = os.path.join(path, 'BH%s' % bhid)
         utils._mkdir(path)
 
-    if slice:
-        path = os.path.join(path, 'Slice')
-        utils._mkdir(path)
-    else:
-        path = os.path.join(path, 'Proj')
-        utils._mkdir(path)
+    #if slice:
+    #    path = os.path.join(path, 'Slice')
+    #    utils._mkdir(path)
+    #else:
+    #    path = os.path.join(path, 'Proj')
+    #    utils._mkdir(path)
 
-    if width is not None:
-        if width == 'Rvir':
-            path = os.path.join(path, 'rvir')
-        else:
-            path = os.path.join(path, '%s%s' % (width[0], width[1]))
+    if width is None:
+        raise AttributeError('Specify a width')
+    else:
+        #if width == 'Rvir':
+        #    path = os.path.join(path, 'rvir')
+        #else:
+        path = os.path.join(path, '%s%s' % (width[0], width[1]))
         utils._mkdir(path)
+    
 
     path = os.path.join(path, '%s%s' % (field[0], field[1]))
     utils._mkdir(path)
     path = os.path.join(path, 'Axis_%s' % axis)
     utils._mkdir(path)
-    if LogScale:
-        path = os.path.join(path, 'LogScale')
-    else:
-        path = os.path.join(path, 'LinScale')
-    utils._mkdir(path)
+    #if LogScale:
+    #    path = os.path.join(path, 'LogScale')
+    #else:
+    #    path = os.path.join(path, 'LinScale')
+    #utils._mkdir(path)
 
-    if plotsinks == [0]:
-        path = os.path.join(path, 'NoBH')
-    elif plotsinks == [-1]:
-        path = os.path.join(path, 'AllBH')
-    else:
-        path = os.path.join(path, 'SomeBH')
-    utils._mkdir(path)
+    #if plotsinks == [0]:
+    #    path = os.path.join(path, 'NoBH')
+    #elif plotsinks == [-1]:
+    #    path = os.path.join(path, 'AllBH')
+    #else:
+    #    path = os.path.join(path, 'SomeBH')
+    #utils._mkdir(path)
     return path
 
 
@@ -360,7 +378,7 @@ def _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, width,
    p.set_background_color(field=field)
    if cbarbounds is not None:
        if cbarunits is None:
-           print('Specify a units for the boundaries of the colorbar')
+           raise AttributeError('Specify a units for the boundaries of the colorbar')
        p.set_unit(field=field, new_unit=cbarunits)
        p.set_zlim(field=field, zmin=cbarbounds[0], zmax=cbarbounds[1])
    if LogScale:
@@ -376,7 +394,7 @@ def _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, width,
            corner='lower_left', text_args={'color':'white', 'size':28})
    p.set_width(width)
 
-   print('Saving ',path+'/'+str(ds)+'.'+extension)
+   mylog.info('Saving ',path+'/'+str(ds)+'.'+extension)
    #this line is here to effectively apply z_lim, units etc....
    p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
 
