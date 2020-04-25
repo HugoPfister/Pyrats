@@ -1,19 +1,19 @@
 import yt
+from yt.funcs import mylog
 import glob
 import os
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from itertools import import product
 
 from . import sink, analysis, load_snap, utils
 
 def plot_snapshots(axis=['x','y','z'], center=None,
-                   field=[('gas', 'density')],
-                   weight_field=[('index','ones')], slice=False,
+                   field=('gas', 'density'),
+                   weight_field=('index','ones'), slice=False,
                    contour_field = None,
                    width=[(10, 'kpc')], folder='./',
-                   cbarunits=[None], cbarbounds=[None], cmap=['viridis'], LogScale=[True],
+                   cbarunits=None, cbarbounds=None, cmap='viridis', LogScale=True,
                    hnum=None, timestep=None, Galaxy=False, bhid=None,
                    plothalos=False, masshalomin=1e5,
                    plotsinks=[0], plotparticles=[False,'type'], sinkdynamics=0, text_color='black',
@@ -56,7 +56,7 @@ def plot_snapshots(axis=['x','y','z'], center=None,
     snap : list of snapshots you want to show, default ALL (-1)
     """
 
-    yt.funcs.mylog.setLevel(40)
+    mylog.setLevel(40)
     files = utils.find_outputs('./Outputs')
     if ((hnum != None) & (timestep == None)):
         timestep = snap[-1]
@@ -67,52 +67,49 @@ def plot_snapshots(axis=['x','y','z'], center=None,
     for fn in yt.parallel_objects(files):
         i = files.index(fn)
         if ToPlot[i]:
-            mylog.info(fn, haloid[i])
+            print('Images for {} in {}'.format(fn, folder))
             #looking at the larger width to load the largest one
             #instead of loading the snapshot many times
             ds = load_snap.load(fn, verbose=False)
-            max_width = ds.arr(0,'pc')
-            for w in width: max_width=max(max_width, ds.arr(w[0],w[1])) 
-            ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=width, old_ramses=old_ramses, verbose=False)
+            max_width=np.max([ds.arr(_[0],_[1]) for _ in width]) 
+            ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=max_width, old_ramses=old_ramses, verbose=False)
+            if center != None:
+                sp = ds.sphere(center, max_width)
+            else:
+                sp = load_snap.get_sphere(ds, max_width, bhid, haloid[i], Galaxy)
             
             for _w in width:
-             for _field_infos in zip(field, weight_field, cbarunits, cmap, cbarbounds, LogScale):
               for _axis in axis: 
-                _field, _weight_field, _cbarunits, _cmap, _cbarbounds, _LogScale = _field_infos
                 path = _make_path(folder, hnum, Galaxy, bhid, slice, _w,
-                    _field, _axis, _LogScale, plotsinks, timestep)
-           
-            if center != None:
-                sp = ds.sphere(center, width)
-            else:
-                sp = load_snap.get_sphere(ds, width, bhid, haloid[i], Galaxy)
-            normal = _get_axis(axis, ds, haloid[i])
-            if slice:
-                #p = yt.OffAxisSlicePlot(ds, data_source=sp, normal=normal, fields=field, width=width)
-                p = yt.SlicePlot(ds, data_source=sp, axis=axis, fields=field, width=width)
-            else:
-                #p = yt.OffAxisProjectionPlot(ds, data_source=sp, normal=normal, fields=field, weight_field=weight_field,
-                #                      width=width, method=method)
-                p = yt.ProjectionPlot(ds, data_source=sp, axis=axis, fields=field, weight_field=weight_field,
-                                                      center=sp.center, width=width, method=method)
+                    field, _axis, LogScale, plotsinks, timestep)
 
-            if (plotsinks != [0]):
-                p = _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics)
+                normal = _get_axis(_axis, ds, haloid[i])
+                if slice:
+                    #p = yt.OffAxisSlicePlot(ds, data_source=sp, normal=normal, fields=field, width=width)
+                    p = yt.SlicePlot(ds, data_source=sp, axis=_axis, fields=field, width=_w)
+                else:
+                    #p = yt.OffAxisProjectionPlot(ds, data_source=sp, normal=normal, fields=field, weight_field=weight_field,
+                    #                      width=_w, method=method)
+                    p = yt.ProjectionPlot(ds, data_source=sp, axis=_axis, fields=field, weight_field=weight_field,
+                                          center=sp.center, width=_w, method=method)
+
+                if (plotsinks != [0]):
+                    p = _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics)
                 
-            if plothalos != False:
-                p = _add_halos(ds, plothalos, masshalomin, p, text_color)
+                if plothalos != False:
+                    p = _add_halos(ds, plothalos, masshalomin, p, text_color)
             
-            if plotparticles[0]:
-                p.annotate_particles(width, ptype=plotparticles[1])
+                if plotparticles[0]:
+                    p.annotate_particles(_w, ptype=plotparticles[1])
 
-            p = _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, width,
+                p = _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, _w,
                             path, extension, ds, text_color)
 
-            if contour_field is not None:
-                p.annotate_contour(contour_field,ncont=[-24,-23],
+                if contour_field is not None:
+                    p.annotate_contour(contour_field,ncont=[-24,-23],
                     plot_args = {'color':{'yellow','blue','black'}})
             
-            p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
+                p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
     return
 
 def plot_profiles(folder='./', center=[0.5,0.5,0.5],
