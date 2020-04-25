@@ -40,6 +40,10 @@ def profiles(ds, center=None,
 
     yt.funcs.mylog.setLevel(40)
     ds = load_snap.load(int(str(ds)[-5:]), bhID = bhid, haloID=hnum, Galaxy=Galaxy, verbose = False, radius=rbound[1])
+    
+    if (True in ['young_star' in _[1] for _ in qtty]):
+        ds = fields.young_star(ds)
+
     if center != None:
         sp = ds.sphere(center, rbound[1])
     else:
