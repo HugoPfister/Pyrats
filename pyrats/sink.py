@@ -311,10 +311,18 @@ def get_sinks(ds):
         sink.x = sink.x / ds['boxlen'] 
         sink.y = sink.y / ds['boxlen'] 
         sink.z = sink.z / ds['boxlen'] 
+
+        SinkFile = ds.prefix + '/matching/BH_average/{}'.format(ds.ids)
+        if os.path.isfile(SinkFile):
+            dummy = pd.read_hdf(SinkFile)
+            sink = pd.concat([dummy, sink], axis=1)
+        else:
+            mylog.info('Did not found averaged quantities, keep going anyway')
+
     else:
         mylog.info('No sink found, keep going anyway')
 
-    sink['hid'] = -1 ; sink['galID'] = -1
+    sink['galID'] = -1
     sink['mgal'] = 0 ; sink['mbulge'] = 0
     sink['sigma_bulge'] = 0 ; sink['mhalo'] = 0
 

@@ -54,7 +54,7 @@ class GalList(object):
             r = np.array([fpu.read_vector(f, 'd') for _ in range(3)])
             v = np.array([fpu.read_vector(f, 'd') for _ in range(3)])
             m = fpu.read_vector(f, 'd') 
-            ID = fpu.read_vector(f, 'i') 
+            ID = fpu.read_vector(f, 'q') 
             age = fpu.read_vector(f, 'd') 
             z = fpu.read_vector(f, 'd') 
             

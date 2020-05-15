@@ -71,17 +71,23 @@ def plot_snapshots(axis=['x','y','z'], center=None,
             #looking at the larger width to load the largest one
             #instead of loading the snapshot many times
             ds = load_snap.load(fn, verbose=False)
-            max_width=np.max([ds.arr(_[0],_[1]) for _ in width]) 
+            max_width=np.argmax([ds.arr(_[0],_[1]).to('cm') for _ in width])
+            max_width = width[max_width] 
             ds = load_snap.load(fn, haloID=haloid[i], Galaxy=Galaxy, bhID=bhid, radius=max_width, old_ramses=old_ramses, verbose=False)
             if center != None:
                 sp = ds.sphere(center, max_width)
             else:
                 sp = load_snap.get_sphere(ds, max_width, bhid, haloid[i], Galaxy)
-            
+           
             for _w in width:
               for _axis in axis: 
                 path = _make_path(folder, hnum, Galaxy, bhid, slice, _w,
                     field, _axis, LogScale, plotsinks, timestep)
+                if hnum !=None:
+                    struct = 'Halo'
+                    if Galaxy: struct= 'Galaxy'
+                    name_fig = path+'/'+'{}_'.format(haloid[i])+field[0]+field[1]+\
+                        '_output{:03}.{}'.format(ds.ids,extension)
 
                 normal = _get_axis(_axis, ds, haloid[i])
                 if slice:
@@ -94,7 +100,7 @@ def plot_snapshots(axis=['x','y','z'], center=None,
                                           center=sp.center, width=_w, method=method)
 
                 if (plotsinks != [0]):
-                    p = _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics)
+                    p = _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics, _w)
                 
                 if plothalos != False:
                     p = _add_halos(ds, plothalos, masshalomin, p, text_color)
@@ -103,13 +109,13 @@ def plot_snapshots(axis=['x','y','z'], center=None,
                     p.annotate_particles(_w, ptype=plotparticles[1])
 
                 p = _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, _w,
-                            path, extension, ds, text_color)
+                            name_fig, extension, ds, text_color)
 
                 if contour_field is not None:
                     p.annotate_contour(contour_field,ncont=[-24,-23],
                     plot_args = {'color':{'yellow','blue','black'}})
-            
-                p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
+                
+                p.save(name_fig, mpl_kwargs={'pad_inches':0, 'transparent':True})
     return
 
 def plot_profiles(folder='./', center=[0.5,0.5,0.5],
@@ -258,9 +264,9 @@ def _make_path(folder, hnum, Galaxy, bhid, slice, width, field, axis, LogScale, 
     #            hnum, timestep))
     #    utils._mkdir(path)
 
-    if bhid is not None:
-        path = os.path.join(path, 'BH%s' % bhid)
-        utils._mkdir(path)
+    #if bhid is not None:
+    #    path = os.path.join(path, 'BH%s' % bhid)
+    #    utils._mkdir(path)
 
     #if slice:
     #    path = os.path.join(path, 'Slice')
@@ -279,8 +285,8 @@ def _make_path(folder, hnum, Galaxy, bhid, slice, width, field, axis, LogScale, 
         utils._mkdir(path)
     
 
-    path = os.path.join(path, '%s%s' % (field[0], field[1]))
-    utils._mkdir(path)
+    #path = os.path.join(path, '%s%s' % (field[0], field[1]))
+    #utils._mkdir(path)
     path = os.path.join(path, 'Axis_%s' % axis)
     utils._mkdir(path)
     #if LogScale:
@@ -299,7 +305,7 @@ def _make_path(folder, hnum, Galaxy, bhid, slice, width, field, axis, LogScale, 
     return path
 
 
-def _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics):
+def _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics, width):
     if plotsinks == [-1]:
         BHsToShow = ds.sink.ID
     else:
@@ -310,7 +316,7 @@ def _add_sink(p, plotsinks, ds, sink, sp, text_color, sinkdynamics):
        if (((float(sp.center[0].to('code_length')) - ch.x.item())**2 +
            (float(sp.center[1].to('code_length')) - ch.y.item())**2 +
            (float(sp.center[2].to('code_length')) - ch.z.item())**2) <
-           ((sp.radius.in_units('code_length') / 2)**2)):
+           ((ds.arr(width[0], width[1]).to('code_length') / 2)**2)):
 
            p.annotate_marker([ch.x.item(), ch.y.item(), ch.z.item()],
                              marker='.', plot_args={
@@ -367,7 +373,7 @@ def _add_halos(ds, plothalos, masshalomin, p, text_color):
 
 
 def _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, width,
-                path, extension, ds, text_color):
+                name_fig, extension, ds, text_color):
 
    my_cmap = plt.matplotlib.cm.get_cmap(cmap)
    my_cmap.set_bad(my_cmap(0))
@@ -391,9 +397,10 @@ def _cleanup_and_save(cmap, p, field, cbarbounds, cbarunits, LogScale, width,
            corner='lower_left', text_args={'color':'white', 'size':28})
    p.set_width(width)
 
-   mylog.info('Saving ',path+'/'+str(ds)+'.'+extension)
+   mylog.info('Saving ', name_fig)
    #this line is here to effectively apply z_lim, units etc....
-   p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
+   p.save(name_fig, mpl_kwargs={'pad_inches':0, 'transparent':True})
+   #p.save(path+'/'+str(ds)+'.'+extension, mpl_kwargs={'pad_inches':0, 'transparent':True})
 
    plot = p.plots[field]
    cbmap = plot.cb.mappable

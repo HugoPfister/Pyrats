@@ -34,15 +34,14 @@ def _DM(pfilter, data):
     return filter
 
 
-def young_star(ds):
+def young_star(ds, age_myr=10):
+    '''
+    Select particles created after the beginning of the simulation,
+    that are younger than age_myr (in Myr).'''
+    def _young_star(pfilter, data):
+        filter = data[('star','age')] < data.ds.arr(age_myr,'Myr')
+        return filter
     yt.add_particle_filter("young_star", function=_young_star,
                   filtered_type="star")
     ds.add_particle_filter("young_star")  
     return ds
-
-def _young_star(pfilter, data):
-    '''
-    Select particles created after the beginning of the simulation,
-    that are younger than 10Myr.'''
-    filter = data[('star','star_age')] < data.ds.arr(10,'Myr')
-    return filter
