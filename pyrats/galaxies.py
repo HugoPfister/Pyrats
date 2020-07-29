@@ -30,7 +30,7 @@ class GalList(object):
         self.gal['bhid'] = -1; self.gal['msink'] = -1; self.gal['BH_dist'] = -1
 
 
-    def read_part(self, igal):
+    def read_part(self, igal, absolute_position=False):
         '''
         Read the particle files, output in this order:
             r,v,m,ID,age,z
@@ -49,7 +49,7 @@ class GalList(object):
             fpu.read_vector(f, 'd') #mgal
             rgal = fpu.read_vector(f, 'd') #xgal
             vgal = fpu.read_vector(f, 'd') #vgal
-            fpu.read_vector(f, 'd') #Lgal
+            Lgal = fpu.read_vector(f, 'd') #Lgal
             fpu.read_vector(f, 'q') #nstar
             r = np.array([fpu.read_vector(f, 'd') for _ in range(3)])
             v = np.array([fpu.read_vector(f, 'd') for _ in range(3)])
@@ -61,7 +61,7 @@ class GalList(object):
             r = r.T - rgal
             v = v.T - vgal
 
-        return r,v,m,ID,age,z
+        return r,v,m,ID,age,z,Lgal
 
 
 
