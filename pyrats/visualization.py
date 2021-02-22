@@ -83,10 +83,10 @@ def plot_snapshots(axis=['x','y','z'], center=None,
               for _axis in axis: 
                 path = _make_path(folder, hnum, Galaxy, bhid, slice, _w,
                     field, _axis, LogScale, plotsinks, timestep)
-                if hnum !=None:
-                    struct = 'Halo'
-                    if Galaxy: struct= 'Galaxy'
-                    name_fig = path+'/'+'{}_'.format(haloid[i])+field[0]+field[1]+\
+                #if hnum !=None:
+                #    struct = 'Halo'
+                #    if Galaxy: struct= 'Galaxy'
+                name_fig = path+'/{}_'.format(field[0]+field[1])+\
                         '_output{:03}.{}'.format(ds.ids,extension)
 
                 normal = _get_axis(_axis, ds, haloid[i])
