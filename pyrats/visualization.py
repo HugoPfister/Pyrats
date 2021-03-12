@@ -86,7 +86,7 @@ def plot_snapshots(axis=['x','y','z'], center=None,
                 #if hnum !=None:
                 #    struct = 'Halo'
                 #    if Galaxy: struct= 'Galaxy'
-                name_fig = path+'/{}_'.format(field[0]+field[1])+\
+                name_fig = path+'/{}'.format(field[0]+field[1])+\
                         '_output{:03}.{}'.format(ds.ids,extension)
 
                 normal = _get_axis(_axis, ds, haloid[i])
@@ -284,11 +284,12 @@ def _make_path(folder, hnum, Galaxy, bhid, slice, width, field, axis, LogScale, 
         path = os.path.join(path, '%s%s' % (width[0], width[1]))
         utils._mkdir(path)
     
-
-    #path = os.path.join(path, '%s%s' % (field[0], field[1]))
-    #utils._mkdir(path)
     path = os.path.join(path, 'Axis_%s' % axis)
     utils._mkdir(path)
+
+    path = os.path.join(path, '%s%s' % (field[0], field[1]))
+    utils._mkdir(path)
+
     #if LogScale:
     #    path = os.path.join(path, 'LogScale')
     #else:
