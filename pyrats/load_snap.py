@@ -67,7 +67,20 @@ def load(files='',
     else:
         yt.funcs.mylog.setLevel(20)
 
-    ds = yt.load(files)
+    if old_ramses:
+        ds = yt.load(files,
+                extra_particle_fields=[("particle_birth_time", "d"),
+                ("particle_metallicity", "d")], bbox=bbox)
+        mylog.info('Filtering stars')
+        yt.add_particle_filter("star", function=fields._star,
+                               filtered_type="io")
+        ds.add_particle_filter("star")
+        mylog.info('Filtering dark matter')
+        yt.add_particle_filter("dm", function=fields._DM,
+                               filtered_type="io")
+        ds.add_particle_filter("dm")
+    else:
+        ds = yt.load(files)
 
     ids = int(str(ds).split('_')[1])
     ds.ids = ids
@@ -119,29 +132,7 @@ def load(files='',
             w = float(ds.arr(radius[0], radius[1]).in_units('code_length'))
         bbox = [center-w, center+w]
    
-    ###########################
-    #read old ramses format (to be removed at some point)
-    #may be broken as not updated anymore....
-    if old_ramses:
-        yt.funcs.mylog.setLevel(40)
-        ds = yt.load(files+'/info_{:05}.txt'.format(ds.ids),
-                extra_particle_fields=[("particle_birth_time", "d"),
-                ("particle_metallicity", "d")], bbox=bbox)
-        mylog.info('Filtering stars')
-        yt.add_particle_filter("star", function=fields._star,
-                               filtered_type="io")
-        ds.add_particle_filter("star")
-        mylog.info('Filtering dark matter')
-        yt.add_particle_filter("DM", function=fields._DM,
-                               filtered_type="io")
-        ds.add_particle_filter("DM")
-        ds.sink = sinks
-        ds.gal = gal
-        if MatchObjects: matching(ds, fvir)
-        yt.funcs.mylog.setLevel(20)
-    ###########################
-    else:
-        ds._bbox = bbox 
+    ds._bbox = bbox 
 
     return ds
 
