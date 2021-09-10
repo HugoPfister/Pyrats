@@ -1,11 +1,9 @@
 import yt
 from yt.utilities.logger import ytLogger as mylog
-import numpy as np
 import os as os
 import numbers
 from glob import glob
 import pandas as pd
-from tqdm import tqdm
 
 from . import fields, sink, galaxies, utils
 
