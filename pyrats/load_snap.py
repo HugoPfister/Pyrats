@@ -133,6 +133,9 @@ def load(files='',
         bbox = [center-w, center+w]
    
     ds._bbox = bbox 
+    
+    #this line ensures that time is the same as in the sink file
+    ds.current_time = ds.cosmology.t_from_z(ds.current_redshift).to('Gyr')
 
     return ds
 
