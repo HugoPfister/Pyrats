@@ -13,7 +13,9 @@ def load(files='',
          haloID=None, Galaxy=False, bhID=None, 
          radius=None, bbox=None,
          MatchObjects=False, fvir=[1,'r90'], contam=False,
-         old_ramses=False, prefix='./', verbose=True):
+         old_ramses=False, 
+         prefix='./', 
+         verbose=True):
     """
     Loads a ramses output
 
@@ -44,7 +46,7 @@ def load(files='',
          fvir[0] -> galaxies to halos
          fvir[1] -> sinks to halos
          fvir[2] -> sinks to galaxies
-    old_ramses : load old ramses 
+    old_ramses : load old ramses () 
     prefix : str, optional
        Set this to the relative path to the root folder containing all
        the outputs.
@@ -68,6 +70,7 @@ def load(files='',
         yt.funcs.mylog.setLevel(20)
 
     if old_ramses:
+        mylog.info('Ramses version without type is not supported anymore')
         ds = yt.load(files,
                 extra_particle_fields=[("particle_birth_time", "d"),
                 ("particle_metallicity", "d")], bbox=bbox)
