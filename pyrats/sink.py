@@ -4,17 +4,11 @@
 Module to deal with sinks
 TODO: get boxlen to rescale and use in a similar way cosmo/ideal sim
 """
-import matplotlib
-# matplotlib.use('PDF')
-import numpy as np
-from matplotlib.backends.backend_pdf import PdfPages
-import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
 import yt
 import glob as glob
 import os as os
-from scipy.interpolate import interp1d
 from yt.frontends.ramses.io import convert_ramses_ages
 from yt.utilities.logger import ytLogger as mylog
 
