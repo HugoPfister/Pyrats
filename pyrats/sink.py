@@ -288,10 +288,9 @@ class Sinks(object):
 def get_sinks(ds):
     columns_name = ['ID', 'M', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'age', 'Mdot']
 
-    SinkFile = ds.files + '/sink_{:05}.csv'.format(ds.ids)
-
-    if os.path.isfile(SinkFile):
-        sink = pd.read_csv(SinkFile, names=columns_name)
+    sink_files = os.path.join(ds.files,'sink_{:05}'.format(ds.ids))
+    if os.path.isfile(sink_file):
+        sink = pd.read_csv(sink_file, names=columns_name)
     else:
         sink = pd.DataFrame(columns = columns_name)
         mylog.info('Did not find any sink file')
@@ -312,15 +311,15 @@ def get_sinks(ds):
         sink.y = sink.y / ds['boxlen'] 
         sink.z = sink.z / ds['boxlen'] 
 
-        SinkFile = ds.prefix + '/matching/BH_average/{}'.format(ds.ids)
-        if os.path.isfile(SinkFile):
-            dummy = pd.read_hdf(SinkFile)
+        sink_file = os.path.isfile(ds.prefix , 'matching', 'BH_average', '{}'.format(ds.ids))
+        if os.path.isfile(sink_file):
+            dummy = pd.read_hdf(sink_file)
             sink = pd.concat([dummy, sink], axis=1)
         else:
             mylog.info('Did not found averaged quantities, keep going anyway')
 
     else:
-        mylog.info('No sink found, keep going anyway')
+        mylog.info('Sink file found,but it is empty')
 
     sink['galID'] = -1
     sink['mgal'] = 0 ; sink['mbulge'] = 0
